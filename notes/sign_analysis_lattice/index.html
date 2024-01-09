@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Sign Analysis and Lattice Theory - Compiler Design and Program Analysis 50.054</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="../..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-sign-analysis-and-lattice-theory">50.054 - Sign Analysis and Lattice Theory</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcomes">Learning Outcomes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#recap">Recap</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#sign-analysis">Sign Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#lattice-theory">Lattice Theory</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-sign-analysis-and-lattice-theory">50.054 - Sign Analysis and Lattice Theory</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Explain the objective of Sign Analysis</li>
+<li>Define Lattice and Complete Lattice</li>
+<li>Define Monotonic Functions</li>
+<li>Explain the fixed point theorem</li>
+<li>Apply the fixed pointed theorem to solve equation constraints of sign analysis</li>
+</ol>
+<h2 id="recap">Recap</h2>
+<p>Recall that one of the goals of semantic analyses is to detect faults without executing the program.</p>
+<pre><code class="language-java">// SIMP1
+x = input;
+while (x &gt;= 0) {
+    x = x - 1;
+}
+y = Math.sqrt(x); // error, can't apply sqrt() to a negative number
+return y;
+</code></pre>
+<p>Note that our current SIMP syntax does not support <code>&gt;=</code>. We could extend both SIMP and Pseudo Assembly to support a new binary operator <code>||</code> so that we can <code>x&gt;=0</code> into <code>(x &gt; 0) || (x == 0)</code></p>
+<blockquote>
+<p>Note that for In Pseudo Assembly we use <code>0</code> to encode <code>false</code> and <code>1</code> to encode <code>true</code>. Hence <code>||</code> can be encoded as <code>+</code>.</p>
+</blockquote>
+<p>To detect that the application of <code>sqrt(x)</code> is causing an error, we could apply the sign analysis.</p>
+<h2 id="sign-analysis">Sign Analysis</h2>
+<p>Sign Analysis is a static analysis which statically determines the possible signs of integer variables at the end of a statement in a program. For example </p>
+<pre><code class="language-java">// SIMP1
+x = input;        // x could be +, - or 0
+while (x &gt;= 0) {  // x could be +, - or 0 
+    x = x - 1;    // x could be +, - or 0
+}                 // x must be -
+y = Math.sqrt(x); // x must be -, y could be +, - or 0
+return y;         // x must be -, y could be +, - or 0
+</code></pre>
+<p>We put the comments as the results of the analysis. </p>
+<h3 id="can-we-turn-sign-analysis-into-a-type-inference-problem">Can we turn Sign Analysis into a type inference problem?</h3>
+<p>The answer is yes, but it is rather imprecise. Let's consider a simple example.</p>
+<pre><code class="language-java">// SIMP2
+x = 0;
+x = x + 1;
+return x;
+</code></pre>
+<p>Suppose we introduce 3 subtypes of the <code>Int</code> type, namely <code>Zero</code>, <code>PosInt</code> and <code>NegInt</code></p>
+<ol>
+<li>The first statement, we infer <code>x</code> has type <code>Zero</code>.</li>
+<li>The second statement, we infer <code>x</code> on the RHS, has type <code>Int</code>, the LHS <code>x</code> has type <code>Int</code>. </li>
+</ol>
+<p>Unification would fail when we try to combine the result of <code>(x : Zero)</code> and <code>(x : Int)</code>. It is also unsound to conclude that <code>Zero</code> is the final type.</p>
+<p>This is because the type inference algorithm is a <em>flow-insensitive</em> analysis, which does not take into account that the program is executed from top to bottom.</p>
+<h3 id="abstract-domain">Abstract Domain</h3>
+<p>To analyse the sign property of the variables statically, we could model the sign property using a set of values instead of sub-typing. </p>
+<p>For example, we may use </p>
+<ul>
+<li><span class="arithmatex">\(\{\}\)</span> to denote the empty set</li>
+<li><span class="arithmatex">\(+\)</span> to denote the set of all positive integers</li>
+<li><span class="arithmatex">\(-\)</span> to denote the set of all ngative integers</li>
+<li><span class="arithmatex">\(\{0\}\)</span> to denote the set containing <code>0</code></li>
+<li><span class="arithmatex">\(+ \cup - \cup \{0\}\)</span> to denote all integers .</li>
+</ul>
+<p>For convenience, let's use <span class="arithmatex">\(\bot\)</span> to denote <span class="arithmatex">\(\{\}\)</span>, <span class="arithmatex">\(\top\)</span> to denote <span class="arithmatex">\(+ \cup - \cup \{0\}\)</span> and <span class="arithmatex">\(0\)</span> to denote <span class="arithmatex">\(\{0\}\)</span>.  These symbols are the abstract values of the sign property. </p>
+<p>Since they are sets of values, we can define the subset relation among them.</p>
+<div class="arithmatex">\[
+\begin{array}{c}
+\bot \subseteq 0  \\ 
+\bot \subseteq +  \\ 
+\bot \subseteq -  \\ 
+0 \subseteq \top \\ 
+{+} \subseteq \top \\ 
+{-} \subseteq \top 
+\end{array}
+\]</div>
+<p>If we put each abstract domain values in a graph we have the following graph <code>Graph1</code></p>
+<div class="mermaid">graph
+    A["⊤"]---B[-]
+    A---C[0]
+    A---D[+]
+    B---E
+    C---E
+    D---E[⊥]
+</div>
+<p>informally the above graph structure is called a <em>lattice</em> in math. </p>
+<p>We will discuss the formal details of lattice shortly. For now let's consider applying the above abstract domain to analyse the sign property of <code>SIMP2</code>. For the ease of implementation we conduct the sign analysis on the Pseudo Assembly instead of SIMP. (The design choice of using Pseudo Assembly is to better align with the project of this module, it is possible to apply the same technique to the SIMP programs directly.)</p>
+<pre><code class="language-java">// PA2        // x -&gt; top
+1: x &lt;- 0     // x -&gt; 0
+2: x &lt;- x + 1 // x -&gt; 0 ++ + -&gt; +
+3: rret &lt;- x  // x -&gt; +
+4: ret
+</code></pre>
+<p>we can follow the flow of the program, before the program starts, we assign <span class="arithmatex">\(\top\)</span> to <code>x</code>, as <code>x</code> could be any value. After instruction 1, we deduce that <code>x</code> must be having the abstract value <code>0</code>, since we assign <code>0</code> to <code>x</code>. After instruction 2, we deduce that <code>x</code> has the abstract value <code>+</code> because we add (<code>++</code>) <code>1</code> to an abstract value <code>0</code>. (Note that the <code>0</code>, <code>1</code> and <code>++</code> in the comments are abstract values and abstract operator. Their overloaded definition will be discussed later in this unit.) For simplicity, we ignore the sign analysis for special variable <code>input</code> (which is always <span class="arithmatex">\(\top\)</span>) and the register <code>rret</code> (whose sign is not useful.)</p>
+<p>Let's consider another example </p>
+<pre><code class="language-java">// PA3                // x -&gt; top, t -&gt; top
+1: x &lt;- 0             // x -&gt; 0, t -&gt; top
+2: t &lt;- input &lt; 0     // x -&gt; 0, t -&gt; top
+3: ifn t goto 6       // x -&gt; 0, t -&gt; top
+4: x &lt;- x + 1         // x -&gt; +, t -&gt; top
+5: goto 6             // x -&gt; +, t -&gt; top
+6: rret &lt;- x          // x -&gt; upperbound(+, 0) -&gt; top, t -&gt; top
+7: ret                
+</code></pre>
+<p>We start off by assigning <span class="arithmatex">\(\top\)</span> to <code>x</code>, then <code>0</code> to <code>x</code> at the instruction 1.
+At instruction 2, we assign the result of the boolean condition to <code>t</code> which could be 0 or 1 hence <code>top</code> is the abstract value associated with <code>t</code>.
+Instruction 3 is a conditional jump. Instruction 4 is the then-branch, we update <code>x</code>'s sign to <code>+</code>. Instruction 6 is the end of the if-else statement, where we need to merge the two possibility of <code>x</code>'s sign. If <code>t</code>'s value is 0, <code>x</code>'s sign is <code>0</code>, otherwise <code>x</code>'s sign is <code>+</code>. Hence we take the upperbound of <code>+</code>, <code>0</code> according to <code>Graph1</code> which is <span class="arithmatex">\(\top\)</span>.</p>
+<p>Let's consider the formalism of the lattice and this approach we just presented. </p>
+<h2 id="lattice-theory">Lattice Theory</h2>
+<h3 id="definition-1-partial-order">Definition 1 - Partial Order</h3>
+<p>A set <span class="arithmatex">\(S\)</span> is a <em>partial order</em> iff there exists a binary relation <span class="arithmatex">\(\sqsubseteq\)</span> with the following condition.</p>
+<ol>
+<li>reflexivity: <span class="arithmatex">\(\forall x \in S, x \sqsubseteq x\)</span></li>
+<li>transitivity: <span class="arithmatex">\(\forall x,y,z \in S, x \sqsubseteq y \wedge y\sqsubseteq z\)</span> implies <span class="arithmatex">\(x \sqsubseteq z\)</span>. </li>
+<li>anti-symmetry: <span class="arithmatex">\(\forall x,y \in S, x \sqsubseteq y \wedge y\sqsubseteq x\)</span> implies <span class="arithmatex">\(x = y\)</span>.</li>
+</ol>
+<p>For instance, the set of abstract values in <code>Graph1</code> forms a partial order if we define <span class="arithmatex">\(x \sqsubseteq y\)</span> as "<span class="arithmatex">\(x\)</span> is at least as precise than <span class="arithmatex">\(y\)</span>", (i.e. <span class="arithmatex">\(x\)</span> is the same or more precise than <span class="arithmatex">\(y\)</span>). </p>
+<h3 id="definition-2-upper-bound">Definition 2 - Upper Bound</h3>
+<p>Let <span class="arithmatex">\(S\)</span> be a partial order, and <span class="arithmatex">\(T \subseteq S\)</span>, <span class="arithmatex">\(y \in S\)</span>. We say <span class="arithmatex">\(y\)</span> is an upper bound of <span class="arithmatex">\(T\)</span> (written as <span class="arithmatex">\(T\sqsubseteq y\)</span>) iff <span class="arithmatex">\(\forall x \in T, x \sqsubseteq y\)</span>. </p>
+<h3 id="definition-3-least-upper-bound">Definition 3 - Least Upper Bound</h3>
+<p>Let <span class="arithmatex">\(S\)</span> be a partial order, and <span class="arithmatex">\(T \subseteq S\)</span>, <span class="arithmatex">\(y \in S\)</span>, We say <span class="arithmatex">\(y\)</span> is the least upper bound of <span class="arithmatex">\(T\)</span> (written as <span class="arithmatex">\(y = \bigsqcup T\)</span>) iff <span class="arithmatex">\(\forall z \in S, T \sqsubseteq z\)</span> implies <span class="arithmatex">\(y \sqsubseteq z\)</span>.</p>
+<p>For example, in <code>Graph1</code>, 0 is an upper bound of <span class="arithmatex">\(\{\bot\}\)</span>, but it is not a least upper bound. <span class="arithmatex">\(\top\)</span> is a least upper bound of <span class="arithmatex">\(\{+, - ,0, \bot\}\)</span>.</p>
+<h3 id="definition-4-lower-bound">Definition 4 - Lower Bound</h3>
+<p>Let <span class="arithmatex">\(S\)</span> be a partial order, and <span class="arithmatex">\(T \subseteq S\)</span>, <span class="arithmatex">\(y \in S\)</span>. We say <span class="arithmatex">\(y\)</span> is a lower bound of <span class="arithmatex">\(T\)</span> (written as <span class="arithmatex">\(y\sqsubseteq T\)</span>) iff <span class="arithmatex">\(\forall x \in T, y \sqsubseteq x\)</span>. </p>
+<h3 id="definition-5-greatest-lower-bound">Definition 5 - Greatest Lower Bound</h3>
+<p>Let <span class="arithmatex">\(S\)</span> be a partial order, and <span class="arithmatex">\(T \subseteq S\)</span>, <span class="arithmatex">\(y \in S\)</span>, We say <span class="arithmatex">\(y\)</span> is the greatest lower bound of <span class="arithmatex">\(T\)</span> (written as <span class="arithmatex">\(y = {\Large \sqcap} T\)</span>) iff <span class="arithmatex">\(\forall z \in S, z \sqsubseteq T\)</span> implies <span class="arithmatex">\(z \sqsubseteq y\)</span>.</p>
+<p>For example, in <code>Graph2</code>, 0 is a lower bound of <span class="arithmatex">\(\{\top\}\)</span>, but it is not a greatest lower bound. <span class="arithmatex">\(\bot\)</span> is a greatest lower bound of <span class="arithmatex">\(\{+, - ,0, \top\}\)</span>.</p>
+<h3 id="definition-6-join-and-meet">Definition 6 - Join and Meet</h3>
+<p>Let <span class="arithmatex">\(S\)</span> be a partial order, and <span class="arithmatex">\(x, y \in S\)</span>. </p>
+<ol>
+<li>We define the join of <span class="arithmatex">\(x\)</span> and <span class="arithmatex">\(y\)</span> as <span class="arithmatex">\(x \sqcup y = \bigsqcup \{x, y\}\)</span>. </li>
+<li>We define the meet of <span class="arithmatex">\(x\)</span> and <span class="arithmatex">\(y\)</span> as <span class="arithmatex">\(x \sqcap y = {\Large \sqcap} \{x, y\}\)</span>. </li>
+</ol>
+<h3 id="definition-7-lattice">Definition 7 - Lattice</h3>
+<p>A partial order <span class="arithmatex">\((S, \sqsubseteq)\)</span> is a <em>lattice</em> iff <span class="arithmatex">\(\forall x, y\in S\)</span>, <span class="arithmatex">\(x \sqcup y\)</span> and <span class="arithmatex">\(x \sqcap y\)</span> exist.</p>
+<h3 id="definition-8-complete-lattice-and-semi-lattice">Definition 8 - Complete Lattice and Semi-Lattice</h3>
+<p>A partial order <span class="arithmatex">\((S, \sqsubseteq)\)</span> is a <em>complete lattice</em> iff <span class="arithmatex">\(\forall X \subseteq S\)</span>, <span class="arithmatex">\(\bigsqcup X\)</span> and <span class="arithmatex">\({\Large \sqcap} X\)</span> exist.</p>
+<p>A partial order <span class="arithmatex">\((S, \sqsubseteq)\)</span> is a <em>join semilattice</em> iff <span class="arithmatex">\(\forall X \subseteq S\)</span>, <span class="arithmatex">\(\bigsqcup X\)</span> exists.</p>
+<p>A partial order <span class="arithmatex">\((S, \sqsubseteq)\)</span> is a <em>meet semilattice</em> iff <span class="arithmatex">\(\forall X \subseteq S\)</span>, <span class="arithmatex">\({\Large \sqcap} X\)</span> exists.</p>
+<p>For example the set of abstract values in <code>Graph1</code> and the "as least as precise" relation <span class="arithmatex">\(\sqsubseteq\)</span> form a complete lattice. </p>
+<p><code>Graph1</code> is the <em>Hasse diagram</em> of this complete lattice.</p>
+<h3 id="lemma-9">Lemma 9</h3>
+<p>Let <span class="arithmatex">\(S\)</span> be a non empty finite set and <span class="arithmatex">\((S, \sqsubseteq)\)</span> is a lattice, then <span class="arithmatex">\((S, \sqsubseteq)\)</span> is a complete lattice.</p>
+<p>In the next few subsections, we introduce a few commonly use lattices. </p>
+<h3 id="powerset-lattice">Powerset Lattice</h3>
+<p>Let <span class="arithmatex">\(A\)</span> be a set. We write <span class="arithmatex">\({\cal P}(A)\)</span> to denote the powerset of <span class="arithmatex">\(A\)</span>. Then <span class="arithmatex">\(({\cal P}(A), \subseteq)\)</span> forms a complete lattice. 
+We call it <em>powerset lattice</em>. </p>
+<p>The above is valid because when we define <span class="arithmatex">\(\sqsubseteq = \subseteq\)</span> and each abstract element in <span class="arithmatex">\({\cal P}(A)\)</span>, we find that for any <span class="arithmatex">\(T \subseteq {\cal P}(A)\)</span>. <span class="arithmatex">\(\bigsqcup T = \bigcup_{x \in T} x\)</span> and <span class="arithmatex">\({\Large \sqcap} T = \bigcap_{x \in T} x\)</span>.</p>
+<blockquote>
+<p>Can you show that the power set of <code>{1,2,3,4}</code> and <span class="arithmatex">\(\subseteq\)</span> form a complete lattice? What is the <span class="arithmatex">\(\top\)</span> element and what is the <span class="arithmatex">\(\bot\)</span> element? Can you draw the diagaram?</p>
+</blockquote>
+<h3 id="product-lattice">Product Lattice</h3>
+<p>Let <span class="arithmatex">\(L_1,...,L_n\)</span> be complete lattices, then <span class="arithmatex">\((L_1 \times ... \times  L_n)\)</span> is a complete lattice where the <span class="arithmatex">\(\sqsubseteq\)</span> is defined as </p>
+<div class="arithmatex">\[
+(x_1, ..., x_n) \sqsubseteq (y_1, ..., y_n)\ {\tt iff}\ \forall i \in [1,n], x_i \sqsubseteq y_i
+\]</div>
+<p>We sometimes write <span class="arithmatex">\(L^n\)</span> as a short-hand for <span class="arithmatex">\((L_1 \times ... \times  L_n)\)</span>.</p>
+<p>For example in <code>PA3</code>, to analyse the signs for variables we need two lattices, one for variable <code>x</code> and the other for variable <code>t</code>, which forms a product lattice. <span class="arithmatex">\(Sign \times Sign\)</span> where <span class="arithmatex">\(Sign\)</span> is a complete lattice is defined as <span class="arithmatex">\((\{ \bot, \top, 0, + , -\}, \sqsubseteq)\)</span>.</p>
+<div class="mermaid">graph TD;
+    tt["(⊤,⊤)"] --- t+["(⊤,+)"]
+    tt["(⊤,⊤)"] --- t0["(⊤,0)"]
+    tt["(⊤,⊤)"] --- tm["(⊤,-)"]
+    tt["(⊤,⊤)"] --- +t["(+,⊤)"]
+    tt["(⊤,⊤)"] --- 0t["(0,⊤)"]
+    tt["(⊤,⊤)"] --- mt["(-,⊤)"]
+    t+["(⊤,+)"] --- tb["(⊤,⊥)"]
+    t+["(⊤,+)"] --- ++["(+,+)"]
+    t+["(⊤,+)"] --- 0+["(0,+)"]
+    t+["(⊤,+)"] --- m+["(-,+)"]
+    t0["(⊤,0)"] --- tb["(⊤,⊥)"]
+    t0["(⊤,0)"] --- 00["(0,0)"]
+    t0["(⊤,0)"] --- +0["(+,0)"]
+    t0["(⊤,0)"] --- m0["(-,0)"]
+    tm["(⊤,-)"] --- tb["(⊤,⊥)"]
+    tm["(⊤,-)"] --- +m["(+,-)"]
+    tm["(⊤,-)"] --- 0m["(0,-)"]
+    tm["(⊤,-)"] --- mm["(-,-)"]
+    +t["(+,⊤)"] --- bt["(⊥,⊤)"]
+    +t["(+,⊤)"] --- ++["(+,+)"]
+    +t["(+,⊤)"] --- +0["(+,0)"]
+    +t["(+,⊤)"] --- +m["(+,-)"]
+    0t["(0,⊤)"] --- bt["(⊥,⊤)"]
+    0t["(0,⊤)"] --- 0+["(0,+)"]
+    0t["(0,⊤)"] --- 00["(0,0)"]
+    0t["(0,⊤)"] --- 0m["(0,-)"]
+    mt["(-,⊤)"] --- bt["(⊥,⊤)"] 
+    mt["(-,⊤)"] --- m+["(-,+)"] 
+    mt["(-,⊤)"] --- m0["(-,0)"] 
+    mt["(-,⊤)"] --- mm["(-,-)"] 
+    ++["(+,+)"] --- b+["(⊥,+)"]
+    ++["(+,+)"] --- +b["(+,⊥)"]
+    0+["(0,+)"] --- b+["(⊥,+)"]
+    0+["(0,+)"] --- 0b["(0,⊥)"]
+    m+["(-,+)"] --- b+["(⊥,+)"]
+    m+["(-,+)"] --- mb["(-,⊥)"]
+    00["(0,0)"] --- b0["(⊥,0)"]
+    00["(0,0)"] --- 0b["(0,⊥)"]
+    +0["(+,0)"] --- b0["(⊥,0)"]
+    +0["(+,0)"] --- +b["(+,⊥)"]
+    m0["(-,0)"] --- b0["(⊥,0)"]
+    m0["(-,0)"] --- mb["(-,⊥)"]
+    +m["(+,-)"] --- bm["(⊥,-)"]
+    +m["(+,-)"] --- +b["(+,⊥)"]
+    0m["(0,-)"] --- bm["(⊥,-)"]
+    0m["(0,-)"] --- 0b["(0,⊥)"]
+    mm["(-,-)"] --- bm["(⊥,-)"] 
+    mm["(-,-)"] --- mb["(-,⊥)"]
+    bt["(⊥,⊤)"] --- b+["(⊥,+)"]
+    bt["(⊥,⊤)"] --- b0["(⊥,0)"]
+    bt["(⊥,⊤)"] --- bm["(⊥,-)"]
+    b+["(⊥,+)"] --- bb["(⊥,⊥)"]
+    b0["(⊥,0)"] --- bb["(⊥,⊥)"]
+    bm["(⊥,-)"] --- bb["(⊥,⊥)"]
+    tb["(⊤,⊥)"] --- +b["(+,⊥)"]
+    tb["(⊤,⊥)"] --- 0b["(0,⊥)"]
+    tb["(⊤,⊥)"] --- mb["(-,⊥)"]
+    +b["(+,⊥)"] --- bb["(⊥,⊥)"]
+    0b["(0,⊥)"] --- bb["(⊥,⊥)"]
+    mb["(-,⊥)"] --- bb["(⊥,⊥)"]
+</div>
+<h3 id="map-lattice">Map Lattice</h3>
+<p>Let <span class="arithmatex">\(L\)</span> be a complete lattice, <span class="arithmatex">\(A\)</span> be a set. Let <span class="arithmatex">\(A \rightarrow L\)</span> denotes a set of functions </p>
+<div class="arithmatex">\[
+\{ m \mid x \in A \wedge m(x) \in L \}
+\]</div>
+<p>and the <span class="arithmatex">\(\sqsubseteq\)</span> relation among functions <span class="arithmatex">\(m_1, m_2 \in A \rightarrow L\)</span> is defined as </p>
+<div class="arithmatex">\[
+m_1 \sqsubseteq m_2\ {\tt iff}\ \forall x\in A, m_1(x) \sqsubseteq m_2(x)
+\]</div>
+<p>Then <span class="arithmatex">\(A \rightarrow L\)</span> is a complete lattice. </p>
+<p>Note that the term "function" used in this definition refers a math function. We could interpret it as a hash table or a Scala <code>Map[A,L]</code> object where elements of <span class="arithmatex">\(A\)</span> are keys and elements of <span class="arithmatex">\(L\)</span> are the values associated with the keys. </p>
+<p>Map lattice offers a compact alternative to lattices for sign analysis of variables in program like <code>PA3</code> when there are many variables. </p>
+<p>We can define a map lattice consisting of functions that map variables (<code>x</code> or <code>t</code>) to abstract values in the complete lattice of <span class="arithmatex">\((\{ \bot, \top, 0, + , -\}, \sqsubseteq)\)</span>. </p>
+<p>For instance, one of the element "functions" in the above-mentioned map lattice could be </p>
+<div class="arithmatex">\[
+m_1 = [ x \mapsto \top, t \mapsto + ] 
+\]</div>
+<p>another element function could be </p>
+<div class="arithmatex">\[
+m_2 = [ x \mapsto \top, t \mapsto \top ] 
+\]</div>
+<p>We conclude that <span class="arithmatex">\(m_1\sqsubseteq m_2\)</span>. Let <span class="arithmatex">\(Var\)</span> denote the set of all variables, and <span class="arithmatex">\(Sign\)</span> denote the complete lattice <span class="arithmatex">\((\{ \bot, \top, 0, + , -\}, \sqsubseteq)\)</span>. <code>m1</code> and <code>m2</code> are elements of the complete lattice <span class="arithmatex">\(Var \rightarrow Sign\)</span></p>
+<div class="mermaid">graph TD;
+    tt["(x→⊤,t→⊤)"] --- t+["(x→⊤,t→+)"]
+    tt["(x→⊤,t→⊤)"] --- t0["(x→⊤,t→0)"]
+    tt["(x→⊤,t→⊤)"] --- tm["(x→⊤,t→-)"]
+    tt["(x→⊤,t→⊤)"] --- +t["(x→+,t→⊤)"]
+    tt["(x→⊤,t→⊤)"] --- 0t["(x→0,t→⊤)"]
+    tt["(x→⊤,t→⊤)"] --- mt["(x→-,t→⊤)"]
+    t+["(x→⊤,t→+)"] --- tb["(x→⊤,t→⊥)"]
+    t+["(x→⊤,t→+)"] --- ++["(x→+,t→+)"]
+    t+["(x→⊤,t→+)"] --- 0+["(x→0,t→+)"]
+    t+["(x→⊤,t→+)"] --- m+["(x→-,t→+)"]
+    t0["(x→⊤,t→0)"] --- tb["(x→⊤,t→⊥)"]
+    t0["(x→⊤,t→0)"] --- 00["(x→0,t→0)"]
+    t0["(x→⊤,t→0)"] --- +0["(x→+,t→0)"]
+    t0["(x→⊤,t→0)"] --- m0["(x→-,t→0)"]
+    tm["(x→⊤,t→-)"] --- tb["(x→⊤,t→⊥)"]
+    tm["(x→⊤,t→-)"] --- +m["(x→+,t→-)"]
+    tm["(x→⊤,t→-)"] --- 0m["(x→0,t→-)"]
+    tm["(x→⊤,t→-)"] --- mm["(x→-,t→-)"]
+    +t["(x→+,t→⊤)"] --- bt["(x→⊥,t→⊤)"]
+    +t["(x→+, t→⊤)"] --- ++["(x→+, t→+)"]
+    +t["(x→+, t→⊤)"] --- +0["(x→+, t→0)"]
+    +t["(x→+, t→⊤)"] --- +m["(x→+, t→-)"]
+    0t["(x→0, t→⊤)"] --- bt["(x→⊥,t→⊤)"]
+    0t["(x→0, t→⊤)"] --- 0+["(x→0, t→+)"]
+    0t["(x→0, t→⊤)"] --- 00["(x→0, t→0)"]
+    0t["(x→0, t→⊤)"] --- 0m["(x→0, t→-)"]
+    mt["(x→-, t→⊤)"] --- bt["(x→⊥, t→⊤)"] 
+    mt["(x→-, t→⊤)"] --- m+["(x→-, t→+)"] 
+    mt["(x→-, t→⊤)"] --- m0["(x→-, t→0)"] 
+    mt["(x→-, t→⊤)"] --- mm["(x→-, t→-)"] 
+    ++["(x→+, t→+)"] --- b+["(x→⊥, t→+)"]
+    ++["(x→+, t→+)"] --- +b["(x→+, t→⊥)"]
+    0+["(x→0, t→+)"] --- b+["(x→⊥, t→+)"]
+    0+["(x→0, t→+)"] --- 0b["(x→0, t→⊥)"]
+    m+["(x→-, t→+)"] --- b+["(x→⊥, t→+)"]
+    m+["(x→-, t→+)"] --- mb["(x→-, t→⊥)"]
+    00["(x→0, t→0)"] --- b0["(x→⊥, t→0)"]
+    00["(x→0, t→0)"] --- 0b["(x→0, t→⊥)"]
+    +0["(x→+, t→0)"] --- b0["(x→⊥, t→0)"]
+    +0["(x→+, t→0)"] --- +b["(x→+, t→⊥)"]
+    m0["(x→-, t→0)"] --- b0["(x→⊥, t→0)"]
+    m0["(x→-, t→0)"] --- mb["(x→-, t→⊥)"]
+    +m["(x→+, t→-)"] --- bm["(x→⊥, t→-)"]
+    +m["(x→+, t→-)"] --- +b["(x→+, t→⊥)"]
+    0m["(x→0, t→-)"] --- bm["(x→⊥, t→-)"]
+    0m["(x→0, t→-)"] --- 0b["(x→0, t→⊥)"]
+    mm["(x→-, t→-)"] --- bm["(x→⊥, t→-)"] 
+    mm["(x→-, t→-)"] --- mb["(x→-, t→⊥)"]
+    bt["(x→⊥, t→⊤)"] --- b+["(x→⊥,t→+)"]
+    bt["(x→⊥, t→⊤)"] --- b0["(x→⊥,t→0)"]
+    bt["(x→⊥, t→⊤)"] --- bm["(x→⊥,t→-)"]
+    b+["(x→⊥, t→+)"] --- bb["(x→⊥, t→⊥)"]
+    b0["(x→⊥, t→0)"] --- bb["(x→⊥, t→⊥)"]
+    bm["(x→⊥, t→-)"] --- bb["(x→⊥, t→⊥)"]
+    tb["(x→⊤, t→⊥)"] --- +b["(x→+,t→⊥)"]
+    tb["(x→⊤, t→⊥)"] --- 0b["(x→0,t→⊥)"]
+    tb["(x→⊤, t→⊥)"] --- mb["(x→-,t→⊥)"]
+    +b["(x→+, t→⊥)"] --- bb["(x→⊥, t→⊥)"]
+    0b["(x→0, t→⊥)"] --- bb["(x→⊥, t→⊥)"]
+    mb["(x→-, t→⊥)"] --- bb["(x→⊥, t→⊥)"]
+</div>
+<h3 id="sign-analysis-with-lattice">Sign analysis with Lattice</h3>
+<p>As we informally elaborated earlier,
+the sign analysis approach "infer" the signs of the variables based on the "previous states" set by the previous statements.</p>
+<pre><code class="language-java">// PA2         // s0 = [x -&gt; top]
+1: x &lt;- 0      // s1 = s0[x -&gt; 0]
+2: x = x + 1   // s2 = s1[x  -&gt; s1(x) ++ +]
+3: rret &lt;- x   // s3 = s2
+4: ret
+</code></pre>
+<p>In the above, we analyse <code>SIMP2</code> program's sign by "packaging" the variable to sign bindings into some state variables, <code>s1</code>, <code>s2</code>, <code>s3</code> and <code>s4</code>. Each state variable is mapping from variable to the abstract values from <span class="arithmatex">\(\{\top, \bot, +, -, 0\}\)</span>. Since <span class="arithmatex">\(\{\top, \bot, +, -, 0\}\)</span> is a lattice, the set of state variables is a map lattice. </p>
+<blockquote>
+<p>Note that we could also model the state variables as a tuple of lattice as a produce lattice.</p>
+</blockquote>
+<p>Next we would like to model the change of variable signs based on the previous instructions. We write <code>s[x -&gt; v]</code> to denote a new state <code>s'</code> which is nearly the same as <code>s</code> except that the mapping of variable <code>x</code> is changed to <code>v.</code> (In Scala style syntax, assuming <code>s</code> is a <code>Map[Var, Sign]</code> object, then <code>s[x-&gt;v]</code> is actually <code>s + (x -&gt; v)</code> in Scala.)</p>
+<p>We write <code>s(x)</code> to denote a query of variable <code>x</code>'s value in state <code>s</code>.
+(In Scala style syntax, it is <code>s.get(x) match { case Some(v) =&gt; v }</code>)</p>
+<p>In the above example, we define <code>s2</code> based on <code>s1</code> by "updating" variable <code>x</code>'s sign to <code>0</code>. We update <code>x</code>'s sign in <code>s3</code> based on <code>s2</code> by querying <code>x</code>'s sign in <code>s2</code> and modifying it by increasing by <code>1</code>.
+We define the <code>++</code> abstract operator for abstract values <span class="arithmatex">\(\{\top, \bot, +, -, 0\}\)</span> as follows</p>
+<table>
+<thead>
+<tr>
+<th>++</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>-</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>Where the first column from the 2nd rows onwards are the left operand and the first row from the 2nd column onwards are the right operand.
+Similarly we can define the other abstract operators</p>
+<table>
+<thead>
+<tr>
+<th>--</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td>+</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>**</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>-</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td>+</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>&lt;&lt;</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>0</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>0</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>Given the definitions of the abstract operators, our next task is to solve the equation among the state variable <code>s0</code>, <code>s1</code>, <code>s2</code> and <code>s3</code></p>
+<pre><code>s0 = [x -&gt; top]
+s1 = s0[x -&gt; 0]
+s2 = s1[x  -&gt; s1(x) ++ +]
+s3 = s2
+</code></pre>
+<p>Note that we can't use unification here as <code>x</code> is assocated with different sign abstract values at different states (instructions).</p>
+<blockquote>
+<p>Question: If we use SSA PA instead of PA, can the generated equations be solved using unification?</p>
+</blockquote>
+<p>To solve the set of equation constraints we could process the equations from top to bottom.</p>
+<pre><code>s0 = [x -&gt; top]
+s1 = [x -&gt; 0]
+s2 = [x -&gt; +]
+s3 = [x -&gt; +]
+</code></pre>
+<p>Then we can conclude that the sign of variable <code>x</code> at instruction 3 is positive. Note that all the states, <code>s0</code>, <code>s1</code>, <code>s2</code> and <code>s3</code> are elements in the map lattice <span class="arithmatex">\(Var \rightarrow Sign\)</span>.</p>
+<p>However, we need a more general solver as the equation systems could be recursive in the presence of loops.  For example.</p>
+<pre><code class="language-java">// PA4              // s0 = [x -&gt; top, y -&gt; top, t -&gt; top]
+1: x &lt;- input       // s1 = s0
+2: y &lt;- 0           // s2 = s1[y -&gt; 0]
+3: t &lt;- x &gt; 0       // s3 = upperbound(s2,s7)[t -&gt; top]
+4: ifn t goto 8     // s4 = s3
+5: y &lt;- y + 1       // s5 = s4[y -&gt; s4(y) ++ +]
+6: x &lt;- x - 1       // s6 = s5[x -&gt; s5(x) -- +]
+7: goto 3           // s7 = s6
+8: rret &lt;- y        // s8 = s4
+9: ret 
+</code></pre>
+<p>In the above the <code>upperbound(s, t)</code> can be define as <span class="arithmatex">\(s \sqcup t\)</span>, assuming <span class="arithmatex">\(s\)</span> and <span class="arithmatex">\(t\)</span> are elements of a complete lattice. </p>
+<p>Note that all the states in the above analysis are elements of <span class="arithmatex">\(Var \rightarrow Sign\)</span>, hence <span class="arithmatex">\(s \sqcup t\)</span> can be defined as </p>
+<div class="arithmatex">\[
+[ x\mapsto s(x) \sqcup t(x) \mid x \in Var ]
+\]</div>
+<p>To solve equation systems like the above, we need some "special" functions that operates on lattices.</p>
+<h3 id="definition-10-monotonic-function">Definition 10 - Monotonic Function</h3>
+<p>Let <span class="arithmatex">\(L_1\)</span> and <span class="arithmatex">\(L_2\)</span> be lattices, a function <span class="arithmatex">\(f : L_1 \longrightarrow L_2\)</span> is <em>monotonic</em> iff <span class="arithmatex">\(\forall x,y \in L_1, x \sqsubseteq y\)</span> implies <span class="arithmatex">\(f(x) \sqsubseteq f(y)\)</span>.</p>
+<blockquote>
+<p>Note that the term "function" in the above is can be treated as the function/method that we define in a programl.</p>
+</blockquote>
+<p>For instance given the lattice described in <code>Graph1</code>, we define the following function </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_1(x) &amp; = &amp; \top
+\end{array}
+\]</div>
+<p>Function <span class="arithmatex">\(f_1\)</span> is monotonic because </p>
+<div class="arithmatex">\[
+\begin{array}{r}
+f_1(\bot) = \top \\
+f_1(0) = \top \\ 
+f_1(+) = \top \\ 
+f_1(-) = \top \\ 
+f_1(\top) = \top
+\end{array} 
+\]</div>
+<p>and <span class="arithmatex">\(\top \sqsubseteq \top\)</span></p>
+<p>Let's consider another function <span class="arithmatex">\(f_2\)</span> </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_2(x) &amp; = &amp; x \sqcup +  
+\end{array}
+\]</div>
+<p>is <span class="arithmatex">\(f_2\)</span> monotonic? Recall <span class="arithmatex">\(\sqcup\)</span> computes the least upper bound of the operands</p>
+<div class="arithmatex">\[
+\begin{array}{r}
+f_2(\bot) = \bot \sqcup + = + \\
+f_2(0) = 0 \sqcup + = \top \\ 
+f_2(+) = + \sqcup + = + \\ 
+f_2(-) = - \sqcup + = \top \\ 
+f_2(\top) = \top \sqcup + = \top 
+\end{array} 
+\]</div>
+<p>Note that </p>
+<div class="arithmatex">\[
+\begin{array}{r}
+\bot \sqsubseteq + \sqsubseteq \top\\ 
+\bot \sqsubseteq 0 \sqsubseteq \top\\ 
+\bot \sqsubseteq - \sqsubseteq \top
+\end{array}
+$$
+when we apply $g$ to all the abstract values in the above inequalities, we find that 
+$$
+\begin{array}{r}
+f_2(\bot) \sqsubseteq f_2(+) \sqsubseteq f_2(\top)\\ 
+f_2(\bot) \sqsubseteq f_2(0) \sqsubseteq f_2(\top)\\ 
+f_2(\bot) \sqsubseteq f_2(-) \sqsubseteq f_2(\top)
+\end{array}
+\]</div>
+<p>hold. Therefore <span class="arithmatex">\(g\)</span> is monotonic. </p>
+<blockquote>
+<p>Let <span class="arithmatex">\(L\)</span> be a lattice and <span class="arithmatex">\(L_1 \times ... \times L_n\)</span> be a product lattice. It follows from Definition 10 that <span class="arithmatex">\(f : L_1 \times ... \times L_n \rightarrow L\)</span> is monotone iff <span class="arithmatex">\(\forall (v_1, ..., v_n) \sqsubseteq (v_1', ..., v_n')\)</span> imples <span class="arithmatex">\(f (v_1, ..., v_n) \sqsubseteq f  (v_1', ..., v_n')\)</span></p>
+</blockquote>
+<h3 id="lemma-11-constant-function-is-monotonic">Lemma 11 - Constant Function is Monotonic.</h3>
+<p>Every constant function <span class="arithmatex">\(f\)</span> is monotonic.</p>
+<h3 id="lemma-12-sqcup-and-sqcap-are-monotonic">Lemma 12 - <span class="arithmatex">\(\sqcup\)</span> and <span class="arithmatex">\(\sqcap\)</span> are Monotonic.</h3>
+<p>Let's treat <span class="arithmatex">\(\sqcup\)</span> as a function <span class="arithmatex">\(L \times L \rightarrow L\)</span>, then <span class="arithmatex">\(\sqcup\)</span> is monotonic.</p>
+<p>Similar observation applies to <span class="arithmatex">\(\sqcap\)</span>.</p>
+<h3 id="definition-13-fixed-point-and-least-fixed-point">Definition 13 - Fixed Point and Least Fixed Point</h3>
+<p>Let <span class="arithmatex">\(L\)</span> be a lattice and <span class="arithmatex">\(f: L \rightarrow L\)</span> is be function. We say <span class="arithmatex">\(x \in L\)</span> is a <em>fixed point</em> of <span class="arithmatex">\(f\)</span> iff <span class="arithmatex">\(x = f(x)\)</span>.
+We say <span class="arithmatex">\(x\)</span> is a <em>least fixed point</em> of <span class="arithmatex">\(f\)</span> iff <span class="arithmatex">\(\forall y \in L\)</span>, <span class="arithmatex">\(y\)</span> is a fixed point of <span class="arithmatex">\(f\)</span> implies <span class="arithmatex">\(x \sqsubseteq y\)</span>.</p>
+<p>For example, for function <span class="arithmatex">\(f_1\)</span>, <span class="arithmatex">\(\top\)</span> is a fixed point and also the least fixed point. For function <span class="arithmatex">\(f_2\)</span>, <span class="arithmatex">\(+\)</span>, <span class="arithmatex">\(\top\)</span> are the fixed points and <span class="arithmatex">\(+\)</span> is the least fixed point.</p>
+<h3 id="theorem-14-fixed-point-theorem">Theorem 14 - Fixed Point Theorem</h3>
+<p>Let <span class="arithmatex">\(L\)</span> be a complete lattice with finite height, every monotonic  function <span class="arithmatex">\(f\)</span> has a unique least fixed point point, namely <span class="arithmatex">\({\tt lfp}(f)\)</span>, defined as </p>
+<div class="arithmatex">\[
+{\tt lfp}(f) = \bigsqcup_{i\geq 0}f^i(\bot)
+\]</div>
+<p>Where <span class="arithmatex">\(f^n(x)\)</span> is a short hand for </p>
+<div class="arithmatex">\[
+\overbrace{f(...(f(x)))}^{n\ {\tt times}}
+\]</div>
+<p>The height of a complete lattice is the length of the longest path from <span class="arithmatex">\(\top\)</span> to  <span class="arithmatex">\(\bot\)</span>.</p>
+<p>The intution of this theorem is that if we start from the <span class="arithmatex">\(\bot\)</span> of the lattice and keep applying a monotonic function <span class="arithmatex">\(f\)</span>, we will reach a fixed point and it must be the only least fixed point. 
+The presence of <span class="arithmatex">\(\bigsqcup\)</span> in the definition above is find the common upper bound for all these applications. Note that the <span class="arithmatex">\(f^{i}(\bot) \sqcup f^{i+1}(\bot) = f^{i+1}(\bot)\)</span> as <span class="arithmatex">\(f\)</span> is monotonic. Eventually, we get rid of the <span class="arithmatex">\(\bigsqcup\)</span> in the result.</p>
+<p>For example, consider function <span class="arithmatex">\(f_2\)</span>. If we start from <span class="arithmatex">\(\bot\)</span> and apply <span class="arithmatex">\(f_2\)</span> repetively, we reach <span class="arithmatex">\(+\)</span> which is the least fixed point.</p>
+<h3 id="lemma-15-map-update-with-monotonic-function-is-monotonic">Lemma 15 - Map update with monotonic function is Monotonic</h3>
+<p>Let <span class="arithmatex">\(f : L_1 \rightarrow (A \rightarrow L_2)\)</span> be a monotonic function from a lattice <span class="arithmatex">\(L_1\)</span> to a map lattice <span class="arithmatex">\(A \rightarrow L_2\)</span>.
+Let <span class="arithmatex">\(g: L_1 \rightarrow L_2\)</span> be another monotonic function.
+Then <span class="arithmatex">\(h(x) = f(x)[a \mapsto g(x)]\)</span> is a monotonic function of <span class="arithmatex">\(L_1 \rightarrow (A \rightarrow L_2)\)</span>.</p>
+<p>To gain some intuition of this lemma, let's try to think in terms of Scala. Recall that the map lattice is <span class="arithmatex">\(A \rightarrow L_2\)</span> can be treated as  <code>Map[A, L2]</code> in Scala style, and <code>L2</code> is a lattice. <code>f : L1 =&gt; Map[A, L2]</code> is a Scala function that's monotonic, <code>g: L1=&gt;L2</code> is another Scala function which is monotonic. Then we can conclude that </p>
+<pre><code class="language-scala">val a:A = ... // a is an element of A, where A is a ground type.
+def h[L1,L2](x:L1):Map[A,L2] = f(x) + (a -&gt; g(x))
+</code></pre>
+<p><code>h</code> is also monotonic. </p>
+<p>Since <span class="arithmatex">\(f\)</span> is monotonic, given <span class="arithmatex">\(x \sqsubseteq y\)</span>, we have <span class="arithmatex">\(f(x) \sqsubseteq f(y)\)</span>. It follows that <span class="arithmatex">\(f(x)[ a\mapsto g(x)] \sqsubseteq f(y)[ a\mapsto g(x)]\)</span>. Since <span class="arithmatex">\(g\)</span> is monotonic, we have <span class="arithmatex">\(f(y)[ a\mapsto g(x)] \sqsubseteq f(y)[ a\mapsto g(y)]\)</span>.</p>
+<p>With the fixed point theoem and Lemma 15, we are ready to define a general solution to solve the equations sytems generated from the sign analysis.</p>
+<h3 id="naive-fixed-point-algorithm">Naive Fixed Point Algorithm</h3>
+<p>input: a function <code>f</code>.</p>
+<ol>
+<li>initialize <code>x</code> as <span class="arithmatex">\(\bot\)</span></li>
+<li>apply <code>f(x)</code> as <code>x1</code></li>
+<li>check <code>x1 == x</code> <ol>
+<li>if true return <code>x</code></li>
+<li>else, update <code>x = x1</code>, go back to step 2.</li>
+</ol>
+</li>
+</ol>
+<p>For instance, if we apply the above algorithm to the <span class="arithmatex">\(f_2\)</span> with the lattice in <code>Graph1</code>, we have the following iterations.</p>
+<ol>
+<li><span class="arithmatex">\(x = \bot, x_1 = f_2(x) = +\)</span></li>
+<li><span class="arithmatex">\(x = +, x_1 = f_2(x) = +\)</span></li>
+<li>fixed point is reached, return <span class="arithmatex">\(x\)</span>. </li>
+</ol>
+<h3 id="applying-naive-fixed-point-algorithm-to-sign-analysis-problem-of-pa2">Applying Naive Fixed Point Algorithm to Sign Analysis Problem of <code>PA2</code></h3>
+<p>Recall the set of equations generated from <code>PA2</code></p>
+<pre><code>s0 = [x -&gt; top]
+s1 = s0[x -&gt; 0]
+s2 = s1[x  -&gt; s1(x) ++ +]
+s3 = s2
+</code></pre>
+<p>and we use <span class="arithmatex">\(Var\)</span> to denote the set of variables, in this case we have only one variable <span class="arithmatex">\(x\)</span>. and <span class="arithmatex">\(Sign\)</span> to denote the sign lattice described in <code>Graph1</code>.</p>
+<p>We model the equation systems by defining one lattice for each equation, <span class="arithmatex">\((Var \rightarrow Sign)\)</span>. In total. we have four map lattices, one for <code>s0</code>, one for <code>s1</code>, and etc. Then we "package" these four map lattices into a product lattice 
+<span class="arithmatex">\(L = (Var \rightarrow Sign)^4\)</span>.  Since <span class="arithmatex">\(Sign\)</span> is a complete lattice, so is <span class="arithmatex">\(L\)</span>.</p>
+<p>Next we want to define the monotonic function <span class="arithmatex">\(f_3\)</span> that helps us to find least fixed point which will be the solution of the above equation systems.  The type of <span class="arithmatex">\(f_3\)</span> should be <span class="arithmatex">\(L \rightarrow L\)</span>, or </p>
+<div class="arithmatex">\[((Var \rightarrow Sign) \times (Var \rightarrow Sign) \times (Var \rightarrow Sign) \times (Var \rightarrow Sign)) \rightarrow ((Var \rightarrow Sign) \times (Var \rightarrow Sign) \times (Var \rightarrow Sign) \times (Var \rightarrow Sign))\]</div>
+<p>in its unabridge form.</p>
+<blockquote>
+<p>Reminder: Even though we write map lattice as <span class="arithmatex">\(Var \rightarrow Sign\)</span>, but it is like a <code>Map[Var, Sign]</code>.</p>
+</blockquote>
+<p>Next we re-model the relations among <code>s0,s1,s2,s3</code> in above equation system in <span class="arithmatex">\(f_3\)</span> as follows</p>
+<div class="arithmatex">\[
+f_3(s_0,s_1,s_2,s_3) = ([x \mapsto \top],s_0[x \mapsto 0], s_1[x \mapsto (s_0(x) {\tt ++}\ {\tt +} )], s_2)
+\]</div>
+<p>Thanks to Lemma 15, <span class="arithmatex">\(f_3\)</span> is monotonic.</p>
+<p>The last step is to apply the naive fixed point algorithm to <span class="arithmatex">\(f_3\)</span> with <span class="arithmatex">\(s_0 = s_1 = s_2 = s_3 = [x \mapsto \bot]\)</span> as the starting point.</p>
+<ol>
+<li><span class="arithmatex">\(s_0 = s_1 = s_2 = s_3 = [x \mapsto \bot]\)</span>, 
+$$ \begin{array}{rcl}
+f_3(s_0,s_1,s_2,s_3) &amp;  = &amp; ([x \mapsto \top], s_0[x \mapsto 0], s_1[x \mapsto (s_0(x) {\tt ++}\ {\tt +})], s_2) \ &amp; = &amp; ([x \mapsto \top], [x \mapsto 0], [x \mapsto +], [x \mapsto \bot])
+\end{array}
+$$</li>
+<li>
+<p><span class="arithmatex">\(s_0 = [x \mapsto \top], s_1 =[x \mapsto 0], s_2 = [x \mapsto +], s_3 = [x \mapsto \bot]\)</span>, 
+$$
+\begin{array}{rcl}
+f_3(s_0,s_1,s_2,s_3) &amp; = &amp; ([x \mapsto \top], s_0[x \mapsto 0], s_1[x \mapsto (s_0(x) {\tt ++}\ {\tt +})], s_2) \ &amp; = &amp; ([x \mapsto \top], [x \mapsto 0], [x \mapsto +], [x \mapsto +])
+\end{array}
+$$</p>
+</li>
+<li>
+<p><span class="arithmatex">\(s_0 = [x \mapsto \top], s_1 =[x \mapsto 0], s_2 = [x \mapsto +], s_3 = [x \mapsto +]\)</span>, 
+$$
+\begin{array}{rcl}
+f_3(s_0,s_1,s_2,s_3) &amp; = &amp; ([x \mapsto \top], s_0[x \mapsto 0], s_1[x \mapsto (s_0(x) {\tt ++}\ {\tt +})], s_2) \ &amp; = &amp; ([x \mapsto \top], [x \mapsto 0], [x \mapsto +], [x \mapsto +])
+\end{array}
+$$</p>
+</li>
+<li>
+<p>fixed point reached, the solution is <span class="arithmatex">\(s_0 = [x \mapsto \top], s_1 =[x \mapsto 0], s_2 = [x \mapsto +], s_3 = [x \mapsto +]\)</span>.</p>
+</li>
+</ol>
+<h3 id="applying-naive-fixed-point-algorithm-to-sign-analysis-problem-of-pa4">Applying Naive Fixed Point Algorithm to Sign Analysis Problem of <code>PA4</code></h3>
+<p>Recall the set of equations generated from <code>PA4</code>'s sign analysis</p>
+<pre><code>s0 = [x -&gt; top, y -&gt; top, t -&gt; top]
+s1 = s0
+s2 = s1[y -&gt; 0]
+s3 = upperbound(s2,s7)[t -&gt; top]
+s4 = s3
+s5 = s4[y -&gt; s4(y) ++ +]
+s6 = s5[x -&gt; s5(x) -- +]
+s7 = s6
+s8 = s4
+</code></pre>
+<p>We define a monotonic function <span class="arithmatex">\(f_4 : (Var \rightarrow Sign)^9 \rightarrow (Var \rightarrow Sign)^9\)</span> as follows</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    s_0, \\ 
+    s_1[y \mapsto 0], \\ 
+    (s_2 \sqcup s_7)[t \mapsto \top], \\ 
+    s_3, \\ 
+    s_4[y \mapsto s_4(y) {\tt ++} \ {\tt +}], \\ 
+    s_5[x \mapsto s_5(x) {\tt --} \ {\tt +}], \\ 
+    s_6, \\ 
+    s_4
+    \end{array} 
+    \right )
+\end{array}
+\]</div>
+<ol>
+<li>
+<p><span class="arithmatex">\(s_0 = s_1 = s_2 = s_3 = s_4 = s_5 = s_6 = s_7 = s_8 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot]\)</span>, 
+$$
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \<br/>
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \bot], \ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot]
+    \end{array} 
+    \right )
+\end{array}
+$$</p>
+</li>
+<li>
+<div class="arithmatex">\[ 
+\begin{array}{l} 
+s_0 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_1 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+s_2 = [x \mapsto \bot, y \mapsto 0, t \mapsto \bot], \\ 
+s_3 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\ 
+s_4 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+s_5 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+s_6 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+s_7 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+s_8 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot]
+\end{array} 
+\]</div>
+</li>
+</ol>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \bot], \\ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot]
+    \end{array} 
+    \right )
+\end{array}
+\]</div>
+<ol>
+<li>
+<div class="arithmatex">\[ 
+\begin{array}{l} 
+s_0 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_1 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_2 = [x \mapsto \bot, y \mapsto 0, t \mapsto \bot], \\ 
+s_3 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\
+s_4 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\ 
+s_5 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+s_6 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\
+s_7 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\
+s_8 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot]
+\end{array} 
+\]</div>
+</li>
+</ol>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\  
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top] 
+    \end{array} 
+    \right )
+\end{array}
+\]</div>
+<ol>
+<li></li>
+</ol>
+<div class="arithmatex">\[ 
+\begin{array}{l} 
+s_0 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_1 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_2 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+s_3 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\
+s_4 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\ 
+s_5 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+s_6 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\
+s_7 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\
+s_8 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top]
+\end{array} 
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\  
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top]
+    \end{array} 
+    \right )
+\end{array}
+\]</div>
+<ol>
+<li></li>
+</ol>
+<div class="arithmatex">\[
+\begin{array}{c} 
+s_0 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_1 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+s_2 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+s_3 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+s_4 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top], \\
+s_5 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\  
+s_6 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+s_7 = [x \mapsto \bot, y \mapsto \bot, t \mapsto \bot], \\ 
+s_8 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top]
+\end{array} 
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto 0, t \mapsto \top]
+    \end{array} 
+    \right )
+\end{array}
+\]</div>
+<ol>
+<li>
+<div class="arithmatex">\[
+\begin{array}{c} 
+s_0 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_1 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+s_2 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+s_3 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+s_4 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+s_5 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+s_6 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+s_7 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+s_8 = [x \mapsto \bot, y \mapsto 0, t \mapsto \top]
+\end{array} 
+$$
+$$
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto +, t \mapsto \top], \\     
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top]
+    \end{array} 
+    \right )    
+\end{array}
+\]</div>
+</li>
+<li>
+<div class="arithmatex">\[
+\begin{array}{c} 
+s_0 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+s_1 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+s_2 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+s_3 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+s_4 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+s_5 = [x \mapsto \top, y \mapsto +, t \mapsto \top], \\     
+s_6 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+s_7 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+s_8 = [x \mapsto \top, y \mapsto 0, t \mapsto \top]
+\end{array} 
+\]</div>
+</li>
+</ol>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto +, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \bot, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top]
+    \end{array} 
+    \right )    
+\end{array}
+\]</div>
+<p>8 . 
+$$
+\begin{array}{c} 
+s_0 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \<br/>
+s_1 = [x \mapsto \top, y \mapsto \top, t \mapsto \top], \ 
+s_2 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \ 
+s_3 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \
+s_4 = [x \mapsto \top, y \mapsto 0, t \mapsto \top], \ 
+s_5 = [x \mapsto \top, y \mapsto +, t \mapsto \top], \   <br/>
+s_6 = [x \mapsto \top, y \mapsto +, t \mapsto \top], \ 
+s_7 = [x \mapsto \bot, y \mapsto +, t \mapsto \top], \ 
+s_8 = [x \mapsto \top, y \mapsto 0, t \mapsto \top]
+\end{array} 
+$$</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_4(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7, s_8, s_9) &amp; = &amp; \left (
+    \begin{array}{c} 
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\  
+    [x \mapsto \top, y \mapsto \top, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto +, t \mapsto \top], \\
+    [x \mapsto \top, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto +, t \mapsto \top], \\ 
+    [x \mapsto \top, y \mapsto 0, t \mapsto \top]
+    \end{array} 
+    \right )    
+\end{array}
+\]</div>
+<p>If we apply <span class="arithmatex">\(f_4\)</span> one more time to the above set of states, we get the same states.
+At this point, we reach the fixed point of the <span class="arithmatex">\(f_4\)</span> functipn w.r.t the <span class="arithmatex">\((Var \rightarrow Sign)^9\)</span> lattice. </p>
+<h3 id="optimization">Optimization</h3>
+<p>This naive fixed point algorithm works but not efficient, namely it blindly applies the "update" of a state <span class="arithmatex">\(s_i\)</span> based on <span class="arithmatex">\(s_{i-1}\)</span> though there is no changes to <span class="arithmatex">\(s_{i-1}\)</span> in the last iteration. For example from step 7 to step 8, <span class="arithmatex">\(s_3\)</span> is updated though there is no change to <span class="arithmatex">\(s_2\)</span>. </p>
+<p>A more efficient algorithm can be derived if we keep track of the dependencies among the states and perform the "update of a state <span class="arithmatex">\(s_i\)</span> if <span class="arithmatex">\(s_i\)</span> is based on <span class="arithmatex">\(s_{i-1}\)</span> and <span class="arithmatex">\(s_{i-1}\)</span> has changed.</p>
+<h3 id="generalizing-the-monotone-constraints-for-sign-analysis">Generalizing the monotone constraints for sign analysis</h3>
+<p>We would like to have a systematic way to define the monotone constraints (i.e. monotonic functions) for analyses like sign analysis.</p>
+<p>Let <span class="arithmatex">\(v_i\)</span> denote a vertex in CFG. We write <span class="arithmatex">\(pred(v_i)\)</span> to denote the set of predecesors of <span class="arithmatex">\(v_i\)</span>.
+let <span class="arithmatex">\(s_i\)</span> denote the state variable of the vertex <span class="arithmatex">\(v_i\)</span> in the CFG. We write <span class="arithmatex">\(pred(s_i)\)</span> to denote the set of state variables of the predecessor of <span class="arithmatex">\(v_i\)</span>.</p>
+<p>For sign analysis,  we define the following helper function </p>
+<div class="arithmatex">\[join(s) = \bigsqcup pred(s)\]</div>
+<p>To avoid confusion, we write <span class="arithmatex">\(src\)</span> to denote the source operands in PA instead of <span class="arithmatex">\(s\)</span>.
+Let <span class="arithmatex">\(V\)</span> denotes the set of variables in the PA program's being analysed.</p>
+<p>The monotonic functions can be defined by the following cases.</p>
+<ul>
+<li>case <span class="arithmatex">\(l == 0\)</span>, <span class="arithmatex">\(s_0 = \lbrack x \mapsto \top \mid x \in V\rbrack\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow src\)</span>, <span class="arithmatex">\(s_l = join(s_l) \lbrack t \mapsto join(s_l)(src)\rbrack\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow src_1\ op\ src_2\)</span>, <span class="arithmatex">\(s_l = join(s_l) \lbrack t \mapsto (join(s_l)(src_1)\ abs(op)\ join(s_l)(src_2))\rbrack\)</span></li>
+<li>other cases: <span class="arithmatex">\(s_l = join(s_l)\)</span></li>
+</ul>
+<p>Let <span class="arithmatex">\(m\)</span> be a map lattice object, and <span class="arithmatex">\(src\)</span> be a PA source operand, the lookup operation <span class="arithmatex">\(m(src)\)</span> for sign analysis is defined as follows </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+m(c) &amp; = &amp; \left \{ 
+        \begin{array}{cc}
+        0 &amp; c == 0 \\
+        + &amp; c &gt; 0 \\
+        - &amp; c &lt; 0     
+        \end{array} 
+        \right . \\ \\
+m(t) &amp; = &amp; \left \{
+        \begin{array}{cc}
+        v &amp; t \mapsto v \in m \\ 
+        error &amp; otherwise
+        \end{array} 
+           \right . \\ \\ 
+m(r) &amp; = &amp; error
+\end{array}
+\]</div>
+<p>Let <span class="arithmatex">\(op\)</span> be PA operator, we define the abstraction operation <span class="arithmatex">\(abs(op)\)</span> for sign analysis as follows, </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+abs(+) &amp; = &amp; ++\\
+abs(-) &amp; = &amp; -- \\
+abs(*) &amp; = &amp; ** \\
+abs(&lt;) &amp; = &amp; &lt;&lt; \\ 
+abs(==) &amp; = &amp; === 
+\end{array}
+\]</div>
+<p>We have seen the definitions of <span class="arithmatex">\(++, --, **\)</span> and <span class="arithmatex">\(&lt;&lt;\)</span></p>
+<blockquote>
+<p>Question: can you define <span class="arithmatex">\(===\)</span>?</p>
+<p>Question: the abstraction operations are pretty coarse (not accurate). For instance, <code>&lt;&lt;</code> and <code>===</code> should return either <code>0</code> or <code>1</code> hence <span class="arithmatex">\(\top\)</span> is too coarse. Can you define a lattice for sign analysis which offers better accuracy? </p>
+<p>Question: Convert <code>SIMP1</code> into a PA. Can we apply the sign analysis to find out that the <code>sqrt(x)</code> is definifely failing?</p>
+</blockquote></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/jquery-3.6.0.min.js"></script>
+<script src="../../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

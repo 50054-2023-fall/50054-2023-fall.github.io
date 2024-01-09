@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Syntax Analysis - Compiler Design and Program Analysis 50.054</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="../..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-syntax-analysis">50.054 - Syntax Analysis</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcome">Learning Outcome</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#a-compiler-pipeline">A compiler pipeline</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#language-grammar-and-rules">Language, Grammar and Rules</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#lexing">Lexing</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#parsing">Parsing</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#summary">Summary</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-syntax-analysis">50.054 - Syntax Analysis</h1>
+<h2 id="learning-outcome">Learning Outcome</h2>
+<p>By the end of this lesson, you should be able to</p>
+<ol>
+<li>Describe the roles and functionalities of lexers and parsers in a compiler pipeline</li>
+<li>Describe the difference between top-down parsing and bottom-up parsing</li>
+<li>Apply left-recursion elimination and left-factoring</li>
+<li>Construct a <code>LL(1)</code> predictive parsing table</li>
+<li>Explain first-first conflicts and first-follow conflicts</li>
+</ol>
+<h2 id="a-compiler-pipeline">A compiler pipeline</h2>
+<div class="mermaid">graph LR
+A[Lexing] --&gt;B[Parsing] --&gt; C[Semantic Analysis] --&gt; D[Optimization] --&gt; E[Target Code Generation]
+</div>
+<ul>
+<li>Lexing</li>
+<li>Input: Source file in String</li>
+<li>Output: A sequence of valid tokens according to the language specification (grammar)</li>
+<li>Parsing</li>
+<li>Input: Output from the Lexer</li>
+<li>Output: A parse tree representing parsed result according to the parse derivation</li>
+</ul>
+<p>A parse tree can be considered the first intermediate representation (IR).</p>
+<h2 id="language-grammar-and-rules">Language, Grammar and Rules</h2>
+<h3 id="what-is-a-language">What is a language?</h3>
+<p>A language is a set of strings.</p>
+<h3 id="what-is-a-grammar">What is a grammar?</h3>
+<p>A grammar is a specification of a language, including the set of valid words (vocabulary) and the set of possible structures formed by the words.</p>
+<p>One common way to define a grammar is by defining a set of production rules.</p>
+<h3 id="a-running-example">A running example</h3>
+<p>Let's consider the language of JSON. Though JSON has no operational semantics, i.e. it's not executable, it serves a good subject for syntax analysis.</p>
+<p>The grammar rule for JSON is as follows</p>
+<pre><code>&lt;&lt;Grammar 1&gt;&gt;
+(JSON) J ::= i | 's' | [] | [IS] | {NS}
+(Items) IS ::= J,IS | J
+(Named Objects) NS ::= N,NS | N
+(Named Object) N ::= 's':J
+</code></pre>
+<p>In the above, the grammar consists of four production rules. Each production rule is of form</p>
+<pre><code>(Name) LHS ::= RHS 
+</code></pre>
+<p>Sometimes, we omit the Name.
+Terms in upper case, are<br/>
+the <em>non-terminal</em>s, and terms in lower case, and symbol terms are the <em>terminal</em>s.</p>
+<p>For each production rule, the LHS is always a non-terminal. On the RHS, we have alternatives separated by <code>|</code>. Each alternatives consists of terminals, non-terminals and mixture of both.</p>
+<p>For instance, the production rule <code>(JSON)</code> states that a JSON non-terminal <code>J</code> is either an <code>i</code> (an integer), a <code>'s'</code> (a quoted string), an empty list <code>[]</code>, an non-empty list <code>[IS]</code> and an object <code>{NS}</code>.  </p>
+<p>A production rule with multiple alternatives, can be rewritten into multiple production rules without alternatives. For instance, the <code>(JSON)</code> production rule can be rewritten as follows,</p>
+<pre><code>J ::= i
+J ::= 's'
+J ::= []
+J ::= [IS]
+J ::= {NS}
+</code></pre>
+<p>For each grammar, we expect the LHS of the first production rule is the starting symbol.</p>
+<h2 id="lexing">Lexing</h2>
+<p><strong>Input:</strong> Source file in string</p>
+<p><strong>Output:</strong> A sequence of valid tokens according to the language specification (grammar)</p>
+<p>The purpose of a lexer is to scan through the input source file to ensure the text is constructed as a sequence of valid tokens specified by the syntax rules of the source langugage. The focus is on token-level. The inter-token constraint validation is performed in the next step, <em>Parsing</em>.</p>
+<p>Sometimes, a lexer is omitted, as the token validation task can be handled in the parser.</p>
+<h3 id="lexical-tokens">Lexical Tokens</h3>
+<p>The set of tokens of a grammar is basically all the terminals. In this JSON grammar example,</p>
+<pre><code>{i, s, ', [, ], {, }, :, \, }
+</code></pre>
+<p>and white spaces are the Lexical Tokens of the language.</p>
+<p>If we are to represent it using Scala data types, we could use the following algebraic data type:</p>
+<pre><code class="language-scala">enum LToken { // lexical Tokens
+    case IntTok(v:Int)
+    case StrTok(v:String)
+    case SQuote
+    case LBracket
+    case RBracket
+    case LBrace
+    case RBrace
+    case Colon
+    case Comma
+    case WhiteSpace
+}
+</code></pre>
+<p>Note that in the above, we find that <code>IntTok</code> and <code>StrTok</code> have semantic components (i.e. the underlying values.) The rest of the tokens  do not.</p>
+<p>Given the input</p>
+<pre><code class="language-json">{'k1':1,'k2':[]}
+</code></pre>
+<p>the  lexer function <code>lex(s:String):List[LToken]</code> should return</p>
+<pre><code class="language-scala">List(LBRace,SQuote,StrTok("k1"),SQuote,Colon,IntTok(1),Comma,SQuote, StrTok("k2"), Colon,LBracket, RBracket, RBrace)
+</code></pre>
+<p>One could argue that we cheat by assuming the integer and string data types are available as builtin terminals. In case we don't have integer and string as builtin terminals, we could expand the grammar as follows:</p>
+<pre><code>&lt;&lt;Grammar 2&gt;&gt;
+(JSON) J ::= I | 'STR' | [] | [IS] | {NS}
+(Items) IS ::= J,IS | J
+(Named Objects) NS ::= N,NS | N
+(Named Object) N ::= 'STR':J
+(Integer) I ::= dI | d
+(String) STR ::= aSTR | a
+</code></pre>
+<p>where <code>d</code> denotes a single digit and <code>a</code> denotes a single ascii character.</p>
+<p>For the rest of this lesson, we will stick with the first formulation in which we have integer and string terminals builtin, which is common for modern languages.</p>
+<h3 id="implementing-a-lexer-using-regular-expression">Implementing a Lexer using Regular Expression</h3>
+<p>Perhaps one easier way to implement a lexer is to make use of regular expression.</p>
+<h4 id="a-simple-example-of-using-scalautilmatchingregex">A simple example of using <code>scala.util.matching.Regex</code></h4>
+<p>We can specify a regex pattern as follows. This example was adopted from
+(<a href="https://www.scala-lang.org/api/3.0.2/scala/util/matching/Regex.html">https://www.scala-lang.org/api/3.0.2/scala/util/matching/Regex.html</a>)</p>
+<pre><code class="language-scala">val date = raw"(\d{4})-(\d{2})-(\d{2})".r
+</code></pre>
+<p>Next we can perform a match against the above regex pattern using the <code>match</code> expression.</p>
+<pre><code class="language-scala">"2004-01-20" match {
+  case date(year, month, day) =&gt; s"$year was a good year for PLs."
+}
+</code></pre>
+<p>The above expression is evaluated to</p>
+<pre><code>2004 was a good year for PLs.
+</code></pre>
+<p>We could develop a simple lexer using the above trick. First we define the pattern for reach token.</p>
+<pre><code class="language-scala">val integer = raw"(\d+)(.*)".r
+val string = raw"([^']*)(.*)".r
+val squote = raw"(')(.*)".r
+val lbracket = raw"(\[)(.*)".r
+val rbracket = raw"(\])(.*)".r
+val lbrace = raw"(\{)(.*)".r
+val rbrace = raw"(\})(.*)".r
+val colon = raw"(:)(.*)".r
+val comma = raw"(,)(.*)".r
+</code></pre>
+<p>For each token, we have two sub patterns, the first sub-pattern capture the token, and second sub-pattern captures the remaining input, so that we can pass it to the next iteration.</p>
+<p>Next we define the following function which tries to extract a token from the begining of the input string, and return the rest if a match is found, otherwise, an error is returned.</p>
+<pre><code class="language-scala">import LToken.*
+type Error = String
+def lex_one(src:String):Either[String, (LToken, String)] = src match {
+    case integer(s, rest) =&gt; Right((IntTok(s.toInt), rest))
+    case squote(_, rest) =&gt; Right((SQuote, rest))
+    case lbracket(_, rest) =&gt; Right((LBracket, rest))
+    case rbracket(_, rest) =&gt; Right((RBracket, rest)) 
+    case lbrace(_, rest) =&gt; Right((LBracket, rest))
+    case rbrace(_, rest) =&gt; Right((RBracket, rest)) 
+    case colon(_, rest) =&gt; Right((Colon, rest))
+    case comma(_, rest) =&gt; Right((Comma, rest))
+    case string(s, rest) =&gt; Right((StrTok(s), rest))
+    case _ =&gt; Left(s"lexer error: unexpected token at ${src}")
+}
+</code></pre>
+<p>Note that the order of the Scala patterns is important, since there is some overlapping cases from the above definition (e.g. the regex pattern <code>string</code> and the rest except for <code>squote</code>).</p>
+<p>Lastly we define the top level <code>lex</code> function by calling <code>lex_one</code> in a recursive function.</p>
+<pre><code class="language-scala">def lex(src:String):Either[Error, List[LToken]] = {
+    def go(src:String, acc:List[LToken]):Either[Error, List[LToken]] = {
+        if (src.length == 0)  
+        {
+            Right(acc)
+        } 
+        else 
+        {
+            lex_one(src) match {
+                case Left(error) =&gt; Left(error)
+                case Right((ltoken, rest)) =&gt; go(rest, acc++List(ltoken))
+            }
+        }
+    }
+    go(src, List())
+}
+</code></pre>
+<h3 id="implementing-a-lexer-using-a-parser">Implementing a Lexer using a Parser</h3>
+<p>In general, parsers are capable of handling context free grammar, which is a super-set of the regular grammars. (A grammar that can be expressed as a regular expression is a regular grammar.)</p>
+<p>Hence it is possible to implement a lexer using a parser, which we are going to discuss in the cohort problems.</p>
+<h2 id="parsing">Parsing</h2>
+<p><strong>Input:</strong> Output from the Lexer</p>
+<p><strong>Output:</strong> A parse tree representing parsed result according to the parse derivation</p>
+<p>Why tree representation?</p>
+<ol>
+<li>Firstly, a tree representation allows efficient access to the sub parts of the source code and intuitive transformation.</li>
+<li>Secondly, a tree representation captures the relationship between the LHS non-terminals and their RHS in the production rules.</li>
+</ol>
+<h3 id="parsing-derivation">Parsing Derivation</h3>
+<p>Given an input list of tokens, we could "walk" through the production rules starting from the starting non-terminal to find the part that is "matching with" the RHS.</p>
+<p>Consider the JSON grammar in its unabridged form,</p>
+<pre><code>(1) J ::= i
+(2) J ::= 's'
+(3) J ::= []
+(4) J ::= [IS]
+(5) J ::= {NS}
+(6) IS ::= J,IS
+(7) IS ::= J 
+(8) NS ::= N,NS
+(9) NS ::= N
+(10) N ::= 's':J
+</code></pre>
+<p>We take the output from our lexer example as the input, with some simplification by removing the Scala constructors</p>
+<pre><code>{ , ' , k1 , ' , : , 1 , , , ' , k2 , : , [ , ] , }
+</code></pre>
+<p>For each token, we attempt to search for a matched rule by scanning the set of production rules from top to bottom.</p>
+<table>
+<tr>
+<th> Rule </th> <th> Parse tree </th> <th> Symbols </th> <th> Input </th>
+</tr>
+<tr> <td> (5) </td>
+<td>
+<div class="mermaid">
+graph
+  J--&gt;LB["{"]
+  J--&gt;NS
+  J--&gt;RB["}"]
+</div>
+</td>
+<td>
+<u>{ </u> NS }
+</td>
+<td>
+<u>{ </u> ' k  1 ' : 1 , ' k 2 ' : [ ] }
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td>
+<div class="mermaid">
+graph
+  J--&gt;LB["{"]
+  J--&gt;NS
+  J--&gt;RB["}"]
+</div>
+</td>
+<td>
+  NS }
+</td>
+<td>
+ ' k  1 ' : 1 , ' k 2 ' : [ ] }
+</td>
+</tr>
+<tr>
+<td>
+(8)
+</td>
+<td>
+<div class="mermaid">
+graph
+  J--&gt;LB["{"]
+  J--&gt;NS
+  J--&gt;RB["}"]
+  NS--&gt;N
+  NS--&gt;,
+  NS--&gt;NS2["NS"]
+</div>
+</td>
+<td>
+N,NS }
+</td>
+<td>
+ ' k  1 ' : 1 , ' k 2 ' : [ ] }
+</td>
+</tr>
+<tr>
+<td colspan="4"> ... (for the steps skipped, please refer to syntax_analysis_annex.md) </td>
+</tr>
+<tr>
+<td>
+(3)
+</td>
+<td>
+<div class="mermaid">
+graph
+  J--&gt;LB["{"]
+  J--&gt;NS
+  J--&gt;RB["}"]
+  NS--&gt;N
+  NS--&gt;,
+  NS--&gt;NS2["NS"]
+  N--&gt;LQ[']
+  N--&gt;S1("s(k1)")
+  N--&gt;RQ[']
+  N--&gt;:
+  N--&gt;J2[J]
+  J2--&gt;i["i(1)"]
+  NS2--&gt;N2[N]
+  N2--&gt;LQ2[']
+  N2--&gt;S2["s(k2)"]
+  N2--&gt;RQ2[']
+  N2--&gt;CL2[":"]
+  N2--&gt;J3[J]
+  J3--&gt;LSQ["["]
+  J3--&gt;RSQ["]"];
+</div>
+</td>
+<td>
+<u>[ ] }</u>
+</td>
+<td>
+<u>[ ] }</u>
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td>
+<div class="mermaid">
+graph
+  J--&gt;LB["{"]
+  J--&gt;NS
+  J--&gt;RB["}"]
+  NS--&gt;N
+  NS--&gt;,
+  NS--&gt;NS2["NS"]
+  N--&gt;LQ[']
+  N--&gt;S1("s(k1)")
+  N--&gt;RQ[']
+  N--&gt;:
+  N--&gt;J2[J]
+  J2--&gt;i["i(1)"]
+  NS2--&gt;N2[N]
+  N2--&gt;LQ2[']
+  N2--&gt;S2["s(k2)"]
+  N2--&gt;RQ2[']
+  N2--&gt;CL2[":"]
+  N2--&gt;J3[J]
+  J3--&gt;LSQ["["]
+  J3--&gt;RSQ["]"];
+</div>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+</table>
+<p>From the above example, it shows that we could implement a parsing routine by recursively searching for a matching production rule based on the current input string and non-terminal (LHS).</p>
+<p>This algorithm is easy to understand but it has some flaws.</p>
+<ol>
+<li>It does not terminate when the grammar contains left recursion.</li>
+<li>It involves some trial-and-error (back-tracking), hence it is not efficient</li>
+</ol>
+<h3 id="ambiguous-grammar">Ambiguous Grammar</h3>
+<p>A grammar is said to be <em>ambiguous</em> if parsing it with an input can produce two different parse trees.</p>
+<p>Consider the following</p>
+<pre><code>&lt;&lt;Grammar 3&gt;&gt;
+E ::= E + E 
+E ::= E * E
+E ::= i
+</code></pre>
+<p>Consider the input <code>1 + 2 * 3</code>. Parsing this input with the above grammar produces</p>
+<div class="mermaid">graph
+  E--&gt;E1["E"]
+  E--&gt;+ 
+  E--&gt;E2["E"] 
+  E1--&gt;i1["i(1)"]
+  E2--&gt;E3["E"]
+  E2--&gt;*
+  E2--&gt;E4["E"]
+  E3--&gt;i2["i(2)"]
+  E4--&gt;i3["i(3)"];
+</div>
+<p>or</p>
+<div class="mermaid">graph
+  E--&gt;E1["E"]
+  E--&gt;* 
+  E--&gt;E2["E"] 
+  E1--&gt;E3["E"]
+  E1--&gt;+
+  E1--&gt;E4["E"]
+  E2--&gt;i3["i(3)"]
+  E3--&gt;i1["i(1)"]
+  E4--&gt;i2["i(2)"];
+</div>
+<p>To resolve ambiguity, the language designers need to make decision to give priority to certain production rules by rewriting it. For example, we argue that <code>*</code> should bind stronger than <code>+</code>. Thus we should rewrite (or rather "restrict") the ambiguous Grammar 3 into the following subset</p>
+<pre><code>&lt;&lt;Grammar 4&gt;&gt;
+E::= T + E
+E::= T
+T::= T * F 
+T::= F
+F::= i
+</code></pre>
+<p>As a result, the input <code>1 + 2 * 3</code> is parsed as</p>
+<div class="mermaid">graph
+  E--&gt;T1["T"]
+  E--&gt;+ 
+  E--&gt;E1["E"] 
+  T1--&gt;F1["F"]
+  F1--&gt;i1["i(1)"]
+  E1--&gt;T2["T"]
+  T2--&gt;F2["F"]
+  F2--&gt;i2["i(2)"]
+  T2--&gt;*
+  T2--&gt;F3["F"]
+  F3--&gt;i3["i(3)"]
+  ;
+</div>
+<h3 id="grammar-with-left-recursion">Grammar with Left Recursion</h3>
+<p>Let's try to run a top-down recursive parsing algorithm over the following grammar</p>
+<pre><code>&lt;&lt;Grammar 5&gt;&gt;
+E ::= E + T
+E ::= T
+T ::= i
+</code></pre>
+<p><code>i</code> and <code>+</code> are terminals, and <code>E</code> and <code>T</code> are the non-terminals. <code>i</code> denotes an integer.</p>
+<p>Consider applying the top-down recursive parsing mentioned above to the input <code>1</code>, if the first production rule is always selected, the algorithm would not terminate. The issue is that the first production rule containing a recursion at the left-most position. To eliminate left recursion in general, we consider the following transformation.</p>
+<p>Let <code>N</code> be a non-terminal, <span class="arithmatex">\(\alpha_i\)</span> and
+<span class="arithmatex">\(\beta_j\)</span> be sequences of symbols (consist of terminals and non-terminals)</p>
+<p>Left recursive grammar rules
+$$
+\begin{array}{rcl}
+N &amp; ::= &amp; N\alpha_1 \
+&amp; ... &amp; \
+N &amp; ::= &amp; N\alpha_n \
+N &amp; ::= &amp; \beta_1 \
+&amp; ... &amp; \
+N &amp; ::= &amp; \beta_m
+\end{array}
+$$</p>
+<p>can be transformed into</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+N &amp; ::= &amp; \beta_1 N' \\
+&amp; ... &amp; \\
+N &amp; ::= &amp; \beta_m N' \\
+N' &amp; ::= &amp; \alpha_1 N' \\
+&amp; ... &amp; \\
+N' &amp; ::= &amp; \alpha_n N' \\
+N' &amp; ::= &amp; \epsilon
+\end{array}
+\]</div>
+<p>Now apply the above to our running example.</p>
+<ul>
+<li><span class="arithmatex">\(N\)</span> is <code>E</code> and</li>
+<li><span class="arithmatex">\(\alpha_1\)</span> is <code>+ T</code>,</li>
+<li><code>T</code> is <span class="arithmatex">\(\beta_1\)</span>.</li>
+</ul>
+<pre><code>&lt;&lt;Grammar 6&gt;&gt;
+E ::= TE'
+E' ::= + TE'
+E' ::= epsilon
+T ::= i
+</code></pre>
+<p>The resulting Grammar 6 is equivalent the original Grammar 5.  Note that epsilon (<span class="arithmatex">\(\epsilon\)</span>) is a special terminal which denotes an empty sequence.</p>
+<p>There are few points to take note</p>
+<ol>
+<li>For indirect left recursion, some substitution steps are required before applying the above transformation. For instance</li>
+</ol>
+<pre><code>&lt;&lt;Grammar 7&gt;&gt;
+G ::= H + G
+H ::= G + i
+H ::= i
+</code></pre>
+<p>We need to substitute <code>H</code> into the first production rule.</p>
+<pre><code>&lt;&lt;Grammar 8&gt;&gt;
+G ::= G + i + G
+G ::= i + G
+</code></pre>
+<ol>
+<li>Since we have changed the grammar production rules, we need to use the transformed grammar for parsing, resulting in the parse trees being generated in the shape of the transformed grammar. We need to perform an extra step of (backwards) transformation to turn the parse trees back to the original grammar. For example, parsing the input <code>1 + 1</code> with Grammar 6 yields the following parse tree</li>
+</ol>
+<div class="mermaid">
+graph
+  E--&gt;T1["T"]
+  E--&gt;Ep1[E']
+  T1--&gt;i1["i(1)"]
+  Ep1--&gt;+
+  Ep1--&gt;T2[T]
+  Ep1--&gt;Ep2[E']
+  T2--&gt;i2["i(1)"]
+  Ep2--&gt;eps1[ε]
+</div>
+<p>which needs to be transformed back to</p>
+<div class="mermaid">
+graph
+  E--&gt;E1["E"]
+  E--&gt;+
+  E--&gt;T1["T"]
+  E1--&gt;T2["T"]
+  T1--&gt;i1["i(1)"]
+  T2--&gt;i2["i(1)"]
+</div>
+<h4 id="predictive-recursive-parsing">Predictive Recursive Parsing</h4>
+<p>Next we address the inefficiency issue with our naive parsing algorithm.
+One observation from the derivation example we've seen earlier is that
+if we are able to pick the "right" production rule without trial-and-error, we would eliminate the backtracking.</p>
+<p>In order to do that we need to ensure the grammar we work with is a particular class of grammar, which is also known as <code>LL(k)</code> grammar.
+Here <code>k</code> refers to the number of leading symbols from the input we need to check in order to identify a particular production rule to apply without back-tracking.</p>
+<p>BTW, <code>LL(k)</code> stands for left-to-right, left-most derivation with <code>k</code> tokens look-ahead algorithm.</p>
+<p>Let <span class="arithmatex">\(\sigma\)</span> denote a symbol, (it could be a terminal or a non-terminal).
+Let <span class="arithmatex">\(\overline{\sigma}\)</span> denote a sequence of symbols.
+Given a grammar <span class="arithmatex">\(G\)</span> we define the following functions <span class="arithmatex">\(null(\overline{\sigma},G)\)</span>, <span class="arithmatex">\(first(\overline{\sigma},G)\)</span> and <span class="arithmatex">\(follow(\sigma, G)\)</span></p>
+<p><span class="arithmatex">\(null(\overline{\sigma},G)\)</span> checks whether the language denoted by <span class="arithmatex">\(\overline{\sigma}\)</span> contains the empty sequence.
+$$
+\begin{array}{rcl}
+null(t,G) &amp; = &amp; false \
+null(\epsilon,G) &amp; = &amp; true \
+null(N,G) &amp; = &amp; \bigvee_{N::=\overline{\sigma} \in G} null(\overline{\sigma},G) \
+null(\sigma_1...\sigma_n,G) &amp; = &amp; null(\sigma_1,G) \wedge ... \wedge null(\sigma_n,G)
+\end{array}
+$$</p>
+<p><span class="arithmatex">\(first(\overline{\sigma},G)\)</span> computes the set of leading terminals from the language denoted by <span class="arithmatex">\(\overline{\sigma}\)</span>.</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+first(\epsilon, G) &amp; = &amp; \{\} \\
+first(t,G) &amp; = &amp; \{t\} \\
+first(N,G) &amp; = &amp; \bigcup_{N::=\overline{\sigma} \in G} first(\overline{\sigma},G) \\
+first(\sigma\overline{\sigma},G) &amp; = &amp;
+  \left [
+    \begin{array}{ll}
+      first(\sigma,G) \cup first(\overline{\sigma},G) &amp; {\tt if}\ null(\sigma,G) \\
+      first(\sigma,G) &amp; {\tt otherwise}
+      \end{array}
+  \right .
+\end{array}
+\]</div>
+<p><span class="arithmatex">\(follow(\sigma,G)\)</span> finds the set of terminals that immediately follows symbol <span class="arithmatex">\(\sigma\)</span> in any derivation derivable from <span class="arithmatex">\(G\)</span>.</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+follow(\sigma,G) &amp; = &amp; \bigcup_{N::=\overline{\sigma}\sigma{\overline{\gamma}} \in G}
+  \left [
+    \begin{array}{ll}
+      first(\overline{\gamma}, G) \cup follow(N,G) &amp; {\tt if}\ null(\overline{\gamma}, G) \\
+      first(\overline{\gamma}, G) &amp; {\tt otherwise}
+    \end{array}
+  \right .
+\end{array}
+\]</div>
+<p>Sometimes, for convenience we omit the second parameter <span class="arithmatex">\(G\)</span>.</p>
+<p>For example, let <span class="arithmatex">\(G\)</span> be Grammar 6, then</p>
+<div class="arithmatex">\[
+\begin{array}{l}
+null(E) = null(TE') = null(T) \wedge null(E') = false \wedge null(E') = false \\
+null(E') = null(+TE') \vee null(\epsilon) = null(+TE') \vee true = true \\
+null(T) = null(i) = false \\
+\\
+first(E) = first(TE') = first(T) =  \{i\} \\
+first(E') = first(+TE') \cup first(\epsilon) = first(+TE') = \{+\} \\
+first(T) = \{i\} \\
+\\
+follow(E) = \{\} \\
+follow(E') = follow(E) \cup follow(E') = \{\} \cup follow(E') \\
+follow(T) = first(E') \cup follow(E') = \{+\} \cup follow(E')
+\end{array}
+\]</div>
+<p>When computing <span class="arithmatex">\(follow(E')\)</span> and <span class="arithmatex">\(follow(T)\)</span> we encounter an infinite sequence of <span class="arithmatex">\(\cup follow(E')\)</span> which leads to a <em>fix-point</em>. That is, an infinite sequence of repeated operation that does not add any value to the existing result. We can conclude that
+<span class="arithmatex">\(follow(E') = \{\}\)</span> and <span class="arithmatex">\(follow(T) = \{+\}\)</span>.</p>
+<p>We will discuss fix-point in-depth in some lesson later.</p>
+<p>Given <span class="arithmatex">\(null\)</span>, <span class="arithmatex">\(first\)</span> and <span class="arithmatex">\(follow\)</span> computed, we can construct a <em>predictive parsing table</em> to check whether the grammar is in <code>LL(k)</code>. For simplicity, we check the case <code>k = 1</code>, we construct the following predictive parsing table where each row is indexed a non-terminal, and each column is indexed by a terminal.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>i</th>
+<th>+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>E'</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>T</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>For each production rule <span class="arithmatex">\(N ::= \overline{\sigma}\)</span>, we put the production rule in</p>
+<ul>
+<li>cell <span class="arithmatex">\((N,t)\)</span> if <span class="arithmatex">\(t \in first(\overline{\sigma})\)</span></li>
+<li>cell <span class="arithmatex">\((N,t')\)</span> if <span class="arithmatex">\(null(\overline{\sigma})\)</span> and <span class="arithmatex">\(t' \in follow(N)\)</span></li>
+</ul>
+<p>We fill up the table</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>i</th>
+<th>+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E</td>
+<td>E ::= TE'</td>
+<td></td>
+</tr>
+<tr>
+<td>E'</td>
+<td></td>
+<td>E' ::= + TE'</td>
+</tr>
+<tr>
+<td>T</td>
+<td>T ::= i</td>
+<td></td>
+</tr>
+<tr>
+<td>We conclude that a grammar is in <code>LL(1)</code> if it contains no conflicts. A conflict arises when there are more than one production rule to be applied given a non-terminal and a leading symbol. Given a <code>LL(1)</code> grammar, we can perform predictive top-down parsing by selecting the right production rule by examining the leading input symbol.</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>In general, there are two kinds of conflicts found in grammar that violates the <code>LL(1)</code> grammar requirements.</p>
+<ol>
+<li>first-first conflict</li>
+<li>first-follow conflict</li>
+</ol>
+<h5 id="first-first-conflict">First-first Conflict</h5>
+<p>Consider the grammar</p>
+<pre><code>&lt;&lt;Grammar 9&gt;&gt;
+S ::= Xb
+S ::= Yc
+X ::= a
+Y ::= a 
+</code></pre>
+<p>We compute <span class="arithmatex">\(null\)</span>, <span class="arithmatex">\(first\)</span> and <span class="arithmatex">\(follow\)</span>.</p>
+<div class="arithmatex">\[
+\begin{array}{l}
+null(S) = null(Xb) = false \\
+null(X) = null(a) = false \\
+null(Y) = null(a) = false \\
+\\
+first(S) = first(Xb) \cup first(Yc) = \{a\} \\
+first(X) = first(a) = \{a \} \\
+first(Y) = first(a) = \{a \} \\
+\\
+follow(S) = \{\} \\
+follow(X) = \{b \} \\
+follow(Y) = \{c \}
+\end{array}
+\]</div>
+<p>We fill up the following predictive parsing table</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>a</th>
+<th>b</th>
+<th>c</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S</td>
+<td>S::=Xb, S::=Yc</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>X</td>
+<td>X::=a</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Y</td>
+<td>Y::=a</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>From the above we find that there are two production rules in the cell <code>(S,a)</code>, namely <code>S::=Xb</code>, and <code>S::=Yc</code>.
+This is a first-first conflict, since both production rules' first set contains <code>a</code>. This prevents us from constructing a predictable parser by observing the leading symbol from the input.</p>
+<p>First-first conflict can be eliminated by applying <em>left-factoring</em> (not to be confused with left recursion).</p>
+<p>From our running example, we find that the cell <code>(S,a)</code> has more than one production rule applicable. This is caused by the fact that both <code>X::=a</code> and <code>Y::=a</code> start with the non-terminal <code>a</code>. We could apply substitution to eliminate <code>X</code> and <code>Y</code>.</p>
+<pre><code>&lt;&lt;Grammar 10&gt;&gt;
+S ::= ab
+S ::= ac
+</code></pre>
+<p>Then we could introduce a new non-terminal <code>Z</code> which capture the following languages after <code>a</code>.</p>
+<pre><code>&lt;&lt;Grammar 11&gt;&gt;
+S ::= aZ
+Z ::= b
+Z ::= c
+</code></pre>
+<h5 id="first-follow-conflict">First-Follow Conflict</h5>
+<p>Consider the following grammar</p>
+<pre><code>&lt;&lt;Grammar 12&gt;&gt;
+S ::= Xd 
+X ::= C 
+X ::= Ba
+C ::= epsilon
+B ::= d
+</code></pre>
+<p>and the <span class="arithmatex">\(null\)</span>, <span class="arithmatex">\(first\)</span> and <span class="arithmatex">\(follow\)</span> functions</p>
+<div class="arithmatex">\[
+\begin{array}{l}
+null(S) = null(Xd) = null(X) \wedge null(d) = false \\
+null(X) = null(C) \vee null(Ba) = true \\
+null(C) = null(\epsilon) = true \\
+null(B) = null(d) = false \\
+\\
+first(S) = first(Xd) = first(X) \cup first(d) = \{d\} \\
+first(X) = first(C) \cup first(Ba) = \{d\} \\
+first(C) = \{\}\\
+first(B) = \{d\} \\
+\\
+follow(S) = \{\} \\
+follow(X) = \{d\} \\
+follow(C) = follow(X) = \{d\} \\
+follow(B) = \{d\}
+\end{array}
+\]</div>
+<p>We construct the predictive parsing table as follows</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>a</th>
+<th>d</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S</td>
+<td></td>
+<td>S::=Xd</td>
+</tr>
+<tr>
+<td>X</td>
+<td></td>
+<td>X::=Ba, X::=C(S::=Xd)</td>
+</tr>
+<tr>
+<td>C</td>
+<td></td>
+<td>C::=epsilon (S::=Xd)</td>
+</tr>
+<tr>
+<td>B</td>
+<td></td>
+<td>B::=d</td>
+</tr>
+</tbody>
+</table>
+<p>In the cell of <code>(X,d)</code> we find two production rules <code>X::=Ba</code> and <code>X::=C (S::=Xd)</code>.
+It is a first-follow conflict, because the first production rule is discovered through the <code>first(X)</code> set and the second one is from the <code>follow(X)</code> set.</p>
+<p>Since first-follow conflicts are introduced by epsilon production rule, we could apply substitution to eliminate first-follow conflicts</p>
+<p>Substitute <code>B</code> and <code>C</code></p>
+<pre><code>&lt;&lt;Grammar 13&gt;&gt;
+S ::= Xd 
+X ::= epsilon 
+X ::= da
+</code></pre>
+<p>Substitute <code>X</code></p>
+<pre><code>&lt;&lt;Grammar 14&gt;&gt;
+S ::= d
+S ::= dad
+</code></pre>
+<p>However, as we can observe, eliminating first-follow conflict by substitution might introduce a new first-first conflict.</p>
+<h4 id="to-ll1-or-not-ll1">To <code>LL(1)</code> or not <code>LL(1)</code></h4>
+<p>Given a grammar, we could get a <code>LL(1)</code> grammar equivalent in most of the cases.</p>
+<ol>
+<li>Disambiguate the grammar if it is ambiguous</li>
+<li>Eliminate the left recursion</li>
+<li>Apply left-factoring if there exists some first-first conflict</li>
+<li>Apply substitution if there exists some first-follow conflict</li>
+<li>repeat 3 if first-first conflict is introduced</li>
+</ol>
+<p>Step 1 is often done manually, (there is no general algorithm to do so.)
+Steps 2-4 (and 5) can be automated by some algorithm.</p>
+<p>Let's consider another example (a subset of Grammar 3).</p>
+<pre><code>&lt;&lt;Grammar 15&gt;&gt;
+E ::= E + E
+E ::= i
+</code></pre>
+<p>Note that this grammar is ambiguous. Let's suppose we skip this step and
+directly eliminate the left-recursion</p>
+<pre><code>&lt;&lt;Grammar 16&gt;&gt;
+E ::= iE'
+E' ::= + EE'
+E' ::= epsilon
+</code></pre>
+<p>Next we compute the predictive parsing table.</p>
+<div class="arithmatex">\[
+\begin{array}{l}
+null(E) = null(iE) = null(i) \wedge null(E') = false \wedge null(E') = false \\
+null(E') = null(+EE') \vee null(\epsilon) = null(+E') \vee true = true \\
+\\
+first(E) = first(iE') = \{i\} \\
+first(E') = first(+EE') \cup first(\epsilon) = first(+EE') = \{+\} \\
+\\
+follow(E) = first(E') \cup follow(E') = \{+\} \cup follow(E') \\
+follow(E') = follow(E) \cup follow(E') = \{+\} \cup follow(E') \cup follow(E')
+\end{array}
+\]</div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>i</th>
+<th>+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E</td>
+<td>E::= iE'</td>
+<td></td>
+</tr>
+<tr>
+<td>E'</td>
+<td></td>
+<td>E'::= +EE', E'::= epsilon</td>
+</tr>
+</tbody>
+</table>
+<p>As shown from the above, the grammar contains a first-follow conflict, therefore it is not a <code>LL(1)</code>.
+It is not possible to perform substitution to eliminate the first-follow conflict because it will lead to
+infinite expansion.</p>
+<h4 id="a-short-summary-so-far-for-top-down-recursive-parsing">A short summary so far for top-down recursive parsing</h4>
+<p>Top-down parsing is simple, however might be inefficient.</p>
+<p>We need to rewrite the grammar into a more specific (a subset) if the grammar is ambiguous. No general algorithm exists.</p>
+<p>We need to eliminate left recursion so that the parsing will terminate.</p>
+<p>We construct the predictive parsing table to check whether the grammar is in <code>LL(k)</code>. If the grammar is in
+<code>LL(k)</code> we can always pick the right production rule given the first <code>k</code> leading symbols from the input.</p>
+<p>For most of the cases, <code>LL(1)</code> is sufficient for practical use.</p>
+<p>We also can conclude that a <code>LL(k+1)</code> grammar is also a <code>LL(k)</code> grammar, but the other way does not hold.</p>
+<p>Given a particular <code>k</code> and a grammar <code>G</code>, we can check whether <code>G</code> is <code>LL(k)</code>. However given a
+grammar <code>G</code> to find a <code>k</code> such that <code>G</code> is <code>LL(k)</code> is undecidable.</p>
+<h2 id="summary">Summary</h2>
+<p>We have covered</p>
+<ul>
+<li>The roles and functionalities of lexers and parsers in a compiler pipeline</li>
+<li>There are two major types of parser, top-down parsing and bottom-up parsing</li>
+<li>How to eliminate left-recursion from a grammar,</li>
+<li>How to apply left-factoring</li>
+<li>How to construct a <code>LL(1)</code> predictive parsing table</li>
+</ul></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/jquery-3.6.0.min.js"></script>
+<script src="../../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

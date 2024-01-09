@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>50.054 - Instroduction to Scala - Compiler Design and Program Analysis 50.054</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../handout/" class="nav-link">Handout</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#50054-instroduction-to-scala" class="nav-link">50.054 - Instroduction to Scala</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#learning-outcomes" class="nav-link">Learning Outcomes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#what-is-scala" class="nav-link">What is Scala?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#scala-hello-world" class="nav-link">Scala Hello World</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#scala-oop-vs-java-oop" class="nav-link">Scala OOP vs Java OOP</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#functional-programming-in-scala-at-a-glance" class="nav-link">Functional Programming in Scala at a glance</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#summary" class="nav-link">Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="50054-instroduction-to-scala">50.054 - Instroduction to Scala</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<p>By the end of this class, you should be able to</p>
+<ul>
+<li>Develop simple implementation in Scala using List, Conditional, and Recursion</li>
+<li>Model problems and design solutions using Algebraic Datatype and Pattern Matching</li>
+<li>Compile and execute simple Scala programs</li>
+</ul>
+<h2 id="what-is-scala">What is Scala?</h2>
+<p>Scala is a hybrid programming language which combines Object Oriented Paradigm and Functional Programming Paradigm. Scala has many backends, including JVM, node.js and native.</p>
+<p>Scala is widely used in the industry and the research communities. There many industry projects and open source projects were implemented mainly in Scala, e.g. Apache Spark, Kafka, Akka, Play! and etc.
+For more details in how Scala is used in the real-world business, you may refer to the following for further readings.</p>
+<ul>
+<li><a href="https://databricks.com/blog/2021/12/03/scala-at-scale-at-databricks.html?fbclid=IwAR01bOskVdPzhA902W2qXlP8MX4yV4iKqCbszT5gnOhko6yV6AKZHBGb09w">Scala at Scale at Databricks</a></li>
+<li><a href="https://www.forbes.com/sites/forbestechcouncil/2021/12/22/why-scala-is-seeing-a-renewed-interest-for-developing-enterprise-software/?sh=3c0ada4f6c1f">Why Scala is seeing a renewed interest for developing enterprise software</a></li>
+<li><a href="https://alvinalexander.com/scala/whos-using-scala-akka-play-framework/">Who is using Scala, Akka and Play framework</a></li>
+<li><a href="https://arxiv.org/pdf/1710.06892.pdf">Type-safe Tensor</a></li>
+</ul>
+<h2 id="scala-hello-world">Scala Hello World</h2>
+<p>Let's say we have a Scala file named <code>HelloWorld.scala</code></p>
+<pre><code class="language-scala">println(&quot;hello world&quot;)
+</code></pre>
+<p>We can execute it via either</p>
+<pre><code class="language-bash">scala HelloWorld.scala
+</code></pre>
+<p>or to compile it then run</p>
+<pre><code class="language-bash">scalac HelloWorld.scala &amp;&amp; scala HelloWorld
+</code></pre>
+<p>Although in the cohort problems, we are going to rely on a Scala project manager called <code>sbt</code> to build, execute and test our codes.</p>
+<h2 id="scala-oop-vs-java-oop">Scala OOP vs Java OOP</h2>
+<p>If you know Object Oriented Programming, you already know 70% of Scala.</p>
+<p>Consider the following Java code snippet</p>
+<pre><code class="language-java">interface FlyBehavior {
+    void fly();
+}
+
+abstract class Bird {
+    private String species;
+    private FlyBehavior fb;
+    public Bird(String species, FlyBehavior fb) {
+        this.species = species;
+        this.fb = fb;
+    }
+    public String getSpecies() { return this.species; }
+    public void fly() { return this.fb.fly(); }
+}
+
+class Duck extends Bird {
+    public Duck() {
+        super(&quot;Duck&quot;, new FlyBehavior() {
+            @override
+            void fly() {
+                System.out.println(&quot;I can't fly&quot;);
+            }
+        })
+    }
+}
+
+class BlueJay extends Bird {
+    public BlueJay() {
+        super(&quot;BlueJay&quot;, new FlyBehavior() {
+            @override
+            void fly() {
+                System.out.println(&quot;Swwooshh!&quot;);
+            }
+        })
+    }
+}
+</code></pre>
+<p>We define an abstract class <code>Bird</code> which has two member attributes, <code>species</code> and <code>fb</code>. We adopt the Strategy design pattern to delegate the fly behavior of the bird through an interface <code>FlyBehavior</code>.</p>
+<p>Scala has the equivalence of language features as Java. The language has much concise syntax. In the following we implement the same logic in Scala.</p>
+<pre><code class="language-scala">trait FlyBehavior { 
+    def fly()
+}
+
+abstract class Bird(species:String, fb:FlyBehavior) { 
+    def getSpecies():String = this.species
+    def fly():Unit = this.fb.fly()
+}
+
+class Duck extends Bird(&quot;Duck&quot;, new FlyBehavior() {
+    override def fly() = println(&quot;I can't fly&quot;)
+})
+
+class BlueJay extends Bird(&quot;BlueJay&quot;, new FlyBehavior() {
+    override def fly() = println(&quot;Swwooshh!&quot;)
+})
+</code></pre>
+<p>In Scala, we prefer inline constructors. A <code>trait</code> is the Scala equivalent of Java's interface. Similar to Python, methods start with <code>def</code>. A method's return type comes after the method name declaration. Type annotations follow their  arguments instead of preceding them. Method bodies are defined after an equality sign. The <code>return</code> keyword is optional; the last expression will be returned as the result. The Java style of method body definition is also supported, i.e. the <code>getSpecies()</code> method can be defined as follows:</p>
+<pre><code class="language-scala">def getSpecies():String { return this.species }
+</code></pre>
+<p>Being a JVM language, Scala allows us to import and invoke Java libraries in Scala code.</p>
+<pre><code class="language-scala">import java.util.LinkedList
+val l = new java.util.LinkedList[String]()
+</code></pre>
+<p>Keyword <code>val</code> defines an immutable variable, and <code>var</code> defines a mutable variable.</p>
+<h2 id="functional-programming-in-scala-at-a-glance">Functional Programming in Scala at a glance</h2>
+<p>In this module, we focus and utilise mostly the functional programming feature of Scala.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Lambda Calculus</th>
+<th>Scala</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Variable</td>
+<td><span class="arithmatex">\(x\)</span></td>
+<td><code>x</code></td>
+</tr>
+<tr>
+<td>Constant</td>
+<td><span class="arithmatex">\(c\)</span></td>
+<td><code>1</code>, <code>2</code>, <code>true</code>, <code>false</code></td>
+</tr>
+<tr>
+<td>Lambda abstraction</td>
+<td><span class="arithmatex">\(\lambda x.t\)</span></td>
+<td><code>(x:T) =&gt; e</code></td>
+</tr>
+<tr>
+<td>Function application</td>
+<td><span class="arithmatex">\(t_1\ t_2\)</span></td>
+<td><code>e1(e2)</code></td>
+</tr>
+<tr>
+<td>Conditional</td>
+<td><span class="arithmatex">\(if\ t_1\ then\ t_2\ else\ t_3\)</span></td>
+<td><code>if (e1) { e2 } else { e3 }</code></td>
+</tr>
+<tr>
+<td>Let Binding</td>
+<td><span class="arithmatex">\(let\ x = t_1\ in\ t_2\)</span></td>
+<td><code>val x = e1 ; e2</code></td>
+</tr>
+<tr>
+<td>Recursion</td>
+<td><span class="arithmatex">\(let\ f = (\mu g.\lambda x.g\ x)\ in\ f\ 1\)</span></td>
+<td><code>def f(x:Int):Int = f(x); f(1);</code></td>
+</tr>
+</tbody>
+</table>
+<p>where <code>T</code> denotes a type and <code>:T</code> denotes a type annotation. <code>e</code>, <code>e1</code>, <code>e2</code> and <code>e3</code> denote expressions.</p>
+<p>Similar to other mainstream languages, defining recursion in Scala is straight-forward, we just
+make reference to the recursive function name in its body.</p>
+<pre><code class="language-scala">def fac(x:Int):Int = { 
+    if (x == 0) { 1 } else { x*fac(x-1) }
+}
+
+val result = fac(10)
+</code></pre>
+<h3 id="scala-strict-and-lazy-evaluation">Scala Strict and Lazy Evaluation</h3>
+<p>Let <code>f</code> be a non-terminating function</p>
+<pre><code class="language-scala">def f(x:Int):Int = f(x)
+</code></pre>
+<p>The following shows that the function application in Scala is using strict evaluation.</p>
+<pre><code class="language-scala">def g(x:Int):Int = 1
+g(f(1)) // it does not terminate
+</code></pre>
+<p>On the other hand, the following code is terminating. </p>
+<pre><code class="language-scala">def h(x: =&gt; Int):Int = 1
+h(f(1)) // it terminates!
+</code></pre>
+<p>The type annotation <code>: =&gt; Int</code> after <code>x</code> states that the argument <code>x</code> is passed in by name (lazy evaluation), not by value (strict evaluation).</p>
+<h3 id="list-data-type">List Data type</h3>
+<p>We consider a commonly used builtin data type in Scala, the list data type. In Scala, the following define some list values.</p>
+<ol>
+<li><code>Nil</code> - an empty list.</li>
+<li><code>List()</code> - an empty list.</li>
+<li><code>List(1,2)</code> - an integer list contains two values.</li>
+<li><code>List("a")</code> - an string list contains one value.</li>
+<li><code>1::List(2,3)</code> - prepends a value <code>1</code> to a list containing <code>2</code> and <code>3</code>.</li>
+<li><code>List("hello") ++ List("world")</code> - concatenating two string lists.</li>
+</ol>
+<p>To iterate through the items in a list, we can use a for-loop:</p>
+<pre><code class="language-scala">def sum(l:List[Int]):Int = {
+    var s = 0
+    for (i &lt;- l) {
+        s = s+i
+    }
+    s
+}
+</code></pre>
+<p>which is very similar to what we could implement in Java or Python.</p>
+<p>However, we are more interested in using the functional programming features in Scala:</p>
+<pre><code class="language-scala">def sum(l:List[Int]):Int = {
+    l match {
+        case Nil =&gt; 0
+        case (hd::tl) =&gt; hd + sum(tl)
+    }
+}
+</code></pre>
+<p>in which <code>l match {case Nil =&gt; 0; case (hd::tl) =&gt; hd+sum(tl) }</code> denotes a pattern-matching expression in Scala. It is similar to the switch statement found in other main stream languages, except that it has more <em>perks</em>.</p>
+<p>In this expression, we pattern match the input list <code>l</code> against two list patterns, namely:</p>
+<ul>
+<li><code>Nil</code> the empty list, and</li>
+<li><code>(hd::tl)</code> the non-empty list</li>
+</ul>
+<blockquote>
+<p>Note that here <code>Nil</code> and <code>hd::tl</code> are not list values, because they are appearing after a <code>case</code> keyword and on the left of a thick arrow <code>=&gt;</code>.</p>
+</blockquote>
+<p>Pattern cases are visited from top to bottom (or left to right). In this example, we first check whether the input list <code>l</code> is an empty list. If it is empty, the sum of an empty list must be <code>0</code>. </p>
+<p>If the input list <code>l</code> is not an empty list, it must have at least one element. The pattern <code>(hd::tl)</code> extracts the first element of the list and binds it to a local variable <code>hd</code> and the remainder (which is the sub list formed by taking away the first element from <code>l</code>) is bound to <code>hd</code>. We often call <code>hd</code> as the head of the list and <code>tl</code> as the tail. We would like to remind that <code>hd</code> is storing a single integer in this case, and <code>tl</code> is capturing a list of integers.</p>
+<p>One advantage of implementing the <code>sum</code> function in FP style is that it is much closer to its math specification.</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+sum(l) = &amp; \left [
+    \begin{array}{ll}
+    0 &amp; {l\ is\ empty} \\
+    head(l)+sum(tail(l)) &amp; {otherwise}
+    \end{array} \right .
+\end{array}
+\]</div>
+<p>Let's consider another example.</p>
+<pre><code class="language-scala">def reverse(l:List[Int]):List[Int] = l match {
+    case Nil =&gt; Nil
+    case (hd::tl) =&gt; reverse(tl) ++ List(hd)
+}
+</code></pre>
+<p>The function <code>reverse</code> takes a list of integers and generates a new list which is in the reverse order of the orginal one. We apply a similar strategy to break down the problem into two sub-problems via the <code>match</code> expression.</p>
+<ul>
+<li>When the input list <code>l</code> is an empty list, we return an empty list. The reverse of an empty list is an empty list</li>
+<li>When the input <code>l</code> is not empty, we make use of the pattern <code>(hd::tl)</code> to extract the head and the tail of the list</li>
+</ul>
+<p>We apply <code>reverse</code> recursively to the tail and then concatenate it with a list containing the head.</p>
+<p>You may notice that the same <code>reverse</code> function can be applied to lists of any element type, and not just integers, as long as all elements in a list share the same type. Therefore, we can rewrite the <code>reverse</code> function into a generic version as follows:</p>
+<pre><code class="language-scala">def reverse[A](l:List[A]):List[A] = l match {
+    case Nil =&gt; Nil
+    case (hd::tl) =&gt; reverse(tl) ++ List(hd)
+}
+</code></pre>
+<p>Note that the first <code>[A]</code> denotes a type argument, with which we specify that the element type of the list is <code>A</code> (any possible type). The type argument is resolved when we apply <code>reverse</code> to a actual argument. For instance in <code>reverse(List(1,2,3))</code> the Scala compiler will resolve <code>A=Int</code> and in <code>reverse(List("a","b"))</code> it will resolve <code>A=String</code>.</p>
+<h4 id="a-note-on-recursion">A Note on Recursion</h4>
+<p>Note that recursive calls to <code>reverse</code> will incur additional memory space in the machine in form of additional function call frames on the call stack.</p>
+<p>A call stack frame has to created to "save" the state of function execution such as local variables. As nested recursive calls are being built up, the machine might run out of memory. This is also known as Stack Overflow Error.</p>
+<p>While simple recursions that make a few tens of or hundreds of nested calls won't harm a lot, we need to rethink when we note that a recursion is going to be executed for a large number of iterations. One way to address this issue is to rewrite non-tail recursion into tail-recursion.</p>
+<p>A tail-recursion is a recursive function in which the recursive call occurs at the last instruction. </p>
+<p>For instance, the <code>reverse()</code> function presented earlier is not. The following variant is a tail recursion</p>
+<pre><code class="language-scala">def reverse[A](l:List[A]):List[A] = {
+    def go(i:List[A], o:List[A]) : List[A] = i match {
+        case Nil =&gt; o
+        case (x::xs) =&gt; go(xs, x::o)
+    }
+    go(l,Nil)
+}
+</code></pre>
+<p>In the above definition, we rely on a inner function <code>go</code> which is a recursive function. In <code>go</code>, the recursion take places at the last instruction in the <code>(x::xs)</code> case. The trick is to
+pass around an accumulated output <code>o</code> in each recursive call.</p>
+<p>Some compilers such as GHC can detect a tail recursive function, but it will not rewrite into a form which no stack is required. </p>
+<p>As compiler technology evolves, many modern FP language compilers are able to detect a subset of non-tail recursions and automatically transform them into the tail recursive version. </p>
+<p>However Scala does not automatically re-write a non-tail recursion into a tail recursion. Instead it offers a check:</p>
+<pre><code class="language-scala">import scala.annotation.tailrec
+
+def reverse[A](l:List[A]):List[A] = {
+    @tailrec
+    def go(i:List[A], o:List[A]) : List[A] = i match {
+        case Nil =&gt; o
+        case (x::xs) =&gt; go(xs, x::o)
+    }
+    go(l,Nil)
+}
+</code></pre>
+<p>The annotation <code>tailrec</code> is to hint to the Scala compiler that <code>go</code> should be compiled in a way that no stack frame should be created. If the compiler fails to do that, it will complain. In the absence of the <code>tailrec</code> annotation, the compiler will still try to optimize the tail recursion. </p>
+<p>If we apply the <code>tailrec</code> annotation to a non-tail recursive function, Scala will complain.</p>
+<pre><code class="language-scala">@tailrec
+def reverse[A](l:List[A]):List[A] = l match {
+    case Nil =&gt; Nil
+    case (hd::tl) =&gt; reverse(tl) ++ List(hd)
+}
+</code></pre>
+<p>The following error is reported:</p>
+<pre><code class="language-scala">-- Error: ----------------------------------------------------------------------
+4 |    case (hd::tl) =&gt; reverse(tl) ++ List(hd)
+  |                     ^^^^^^^^^^^
+  |                 Cannot rewrite recursive call: it is not in tail position
+1 error found
+</code></pre>
+<h3 id="map-fold-and-filter">Map, Fold and Filter</h3>
+<p>Consider the following function</p>
+<pre><code class="language-scala">def addToEach(x:Int, l:List[Int]):List[Int] = l match {
+    case Nil =&gt; Nil
+    case (y::ys) =&gt; {
+        val yx = y+x
+        yx::addToEach(x,ys)
+    }
+}
+</code></pre>
+<p>It takes two inputs, an integer <code>x</code> and an integer list <code>l</code>, and adds <code>x</code> to every element in <code>l</code> and put the results in the output list.</p>
+<p>For instance <code>addToEach(1, List(1,2,3))</code> yields <code>List(2,3,4)</code>.</p>
+<p>The above can rewritten by using a generic library method shipped with Scala.</p>
+<pre><code class="language-scala">def addToEach(x:Int, l:List[Int]):List[Int] = l.map(y=&gt;y+x)
+</code></pre>
+<p>The method <code>map</code> is a method of the list class that takes an function as input argument and applies it to all elements in the list object.</p>
+<p>Note that the above is same as</p>
+<pre><code class="language-scala">def addToEach(x:Int, l:List[Int]):List[Int] = {
+    def addX(y:Int):Int = y+x
+    l.map(addX)
+}
+</code></pre>
+<p>We can observe that the input list and the output list of the <code>map</code> method must be of the same type and have the same length.</p>
+<p>Recall in the <code>sum</code> function introduced in the earlier section. It takes a list of integers and "collapses" them into one number by summation. We can rewrite it using a fold function.</p>
+<pre><code class="language-scala">def sum(l:List[Int]):Int = l.foldLeft(0)((acc,x)=&gt; acc+x)
+</code></pre>
+<p>The <code>foldLeft</code> method takes a base accumulator, and a binary function as inputs, and aggregates the elements from the list using the binary function.  In particular, the binary aggreation function assumes the first argument is the accumulator.</p>
+<p>Besides <code>foldLeft</code>, there exists a <code>foldRight</code> method, in which the binary aggregation function expects the second argument is the accumulator.</p>
+<pre><code class="language-scala">def sum(l:List[Int]):Int = l.foldRight(0)((x,acc)=&gt; x+acc)
+</code></pre>
+<p>So what is the difference between <code>foldLeft</code> and <code>foldRight</code>?  What happen if you run the following? Can you explain the difference?</p>
+<pre><code class="language-scala">val l = List(&quot;a&quot;,&quot;better&quot;,&quot;world&quot;, &quot;by&quot;, &quot;design&quot;)
+l.foldLeft(&quot;&quot;)((acc,x) =&gt; (acc+&quot; &quot;+x)) 
+l.foldRight(&quot;&quot;)((x,acc) =&gt; (x+&quot; &quot;+acc))
+</code></pre>
+<p>Note that <code>+</code> is an overloaded operator. In the above it concatenates two string values.</p>
+<p>Intuitively, <code>l.foldLeft("")((acc,x) =&gt; (acc+" "+x))</code> aggregates the list of words using the aggregation function by nesting the recursive calls to the left.</p>
+<pre><code class="language-scala">((((&quot;&quot;+&quot; &quot;+&quot;a&quot;)+&quot; &quot;+&quot;better&quot;)+&quot; &quot;+&quot;world&quot;)+&quot; &quot;+&quot;by&quot;)+&quot; &quot;+&quot;design&quot;
+</code></pre>
+<p>where <code>l.foldRight("")((x,acc) =&gt; (x+" "+acc))</code> aggregates the list of words by nesting the recursive calls to the right.</p>
+<pre><code class="language-scala">&quot;a&quot;+&quot; &quot;+(&quot;better&quot;+&quot; &quot;+(&quot;world&quot;+&quot; &quot;+(&quot;by&quot;+&quot; &quot;+(&quot;design&quot;+&quot; &quot;+&quot;&quot;))))
+</code></pre>
+<p>The method <code>filter</code> takes a boolean test function and applies it to the elements in the list, keeping those whose test result is true and dropping those whose result is false.</p>
+<pre><code class="language-scala">val l = List(1,2,3,4)
+def even(x:Int):Boolean = x%2==0
+l.filter(even)
+</code></pre>
+<p>returns <code>List(2,4)</code>.</p>
+<pre><code class="language-scala">val l = List('a','1','0','d')
+l.filter((c:Char) =&gt; c.isDigit)
+</code></pre>
+<p>returns <code>List('1','0')</code>.</p>
+<p>With <code>map</code>, <code>foldLeft</code> and <code>filter</code>, we can express the implementation of algorithms in a concise and elegant way. For instance, the following function implements the quicksort algorithm:</p>
+<pre><code class="language-scala">def qsort(l:List[Int]):List[Int] = l match {
+    case Nil =&gt; Nil
+    case List(x) =&gt; List(x)
+    case (p::rest) =&gt; {
+        val ltp = rest.filter( x =&gt; x &lt; p)
+        val gep = rest.filter( x =&gt; !(x &lt; p))
+        qsort(ltp) ++ List(p) ++ qsort(gep)
+    }
+}
+</code></pre>
+<p>which resembles the math specification</p>
+<div class="arithmatex">\[
+\begin{array}{cc}
+qsort(l) = &amp; \left[
+    \begin{array}{ll}
+    l &amp; |l| &lt; 2 \\
+    qsort(\{x|x \in l \wedge x &lt; head(l) \}) \uplus \{head(l)\} \uplus qsort(\{x|x\in l \wedge \neg(x &lt; head(l)) \}) &amp; otherwise
+    \end{array} \right .
+\end{array}
+\]</div>
+<p>where <span class="arithmatex">\(\uplus\)</span> unions two bags and maintains the order.</p>
+<h3 id="flatmap-and-for-comprehension">flatMap and for-comprehension</h3>
+<p>There is a variant of <code>map</code> method, consider</p>
+<pre><code class="language-scala">val l = (1 to 5).toList
+l.map( i =&gt; if (i%2 ==0) { List(i) } else { Nil })
+</code></pre>
+<p>would yield</p>
+<pre><code class="language-scala">List(List(), List(2), List(), List(4), List())
+</code></pre>
+<p>We would like to get rid of the nested lists and flatten the outer list. </p>
+<p>One possibility is to:</p>
+<pre><code class="language-scala">l.flatMap( i =&gt; if (i%2 ==0) { List(i) } else { Nil })
+</code></pre>
+<p>Like <code>map</code>, <code>flatMap</code> applies its parameter function  to every element in the list. Unlike <code>map</code>, <code>flatMap</code> expects the parameter function produces a list, thus
+it will join all the sub-lists into one list.</p>
+<p>With <code>map</code> and <code>flatMap</code>, we can define complex list transformation operations like the following:</p>
+<pre><code class="language-scala">def listProd[A,B](la:List[A], lb:List[B]):List[(A,B)] = 
+    la.flatMap( a =&gt; lb.map(b =&gt; (a,b)))
+
+val l2 = List('a', 'b', 'c')
+listProd(l, l2)
+</code></pre>
+<p>which produces:</p>
+<pre><code class="language-scala">List((1,a), (1,b), (1,c), (2,a), (2,b), (2,c), (3,a), (3,b), (3,c), (4,a), (4,b), (4,c), (5,a), (5,b), (5,c))
+</code></pre>
+<p>Note that Scala supports list comprehension via the <code>for ... yield</code> construct. We could re-express <code>listProd</code> as follows:</p>
+<pre><code class="language-scala">def listProd2[A,B](la:List[A], lb:List[B]):List[(A,B)] = 
+    for {
+        a &lt;- la
+        b &lt;- lb
+    } yield (a,b)
+</code></pre>
+<p>The Scala compiler desugars:</p>
+<pre><code class="language-scala">for { x1 &lt;- e1;  x2 &lt;- e2; ...; xn &lt;- en } yield e
+````
+into:
+
+```scala
+e1.flatMap( x1 =&gt; e2.flatMap(x2 =&gt;  .... en.map( xn =&gt; e) ...))
+</code></pre>
+<p>The above syntactic sugar not only works for the list data type but any data type with <code>flatMap</code> and <code>map</code> defined (as we will see in the upcoming lessons).</p>
+<p>In its general form, we refer to it as <em>for-comprehension</em>.
+One extra note to take is that the for-comprehension should not be confused with the for-loop statement exists in the imperative style programming in Scala.</p>
+<pre><code class="language-scala">var sum = 0
+for (i &lt;- 1 to 10)
+{sum = sum + i}
+println(sum)
+</code></pre>
+<h3 id="the-algebraic-datatype">The Algebraic Datatype</h3>
+<p>Like many other languages, Scala supports user defined data type.
+From an earlier section, we have discussed how to use classes and traits in Scala to define data types, making using of the OOP concepts that we have learned.</p>
+<p>This style of defining data types using abstraction and encapsulation is also known as the abstract datatype.</p>
+<p>In this section, we consider an alternative, the Algebraic Datatype.</p>
+<p>Consider the following EBNF of a math expression.</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+{\tt (Math Exp)} &amp; e &amp; ::= &amp; e + e \mid e - e \mid  e * e \mid e / e \mid c \\
+{\tt (Constant)} &amp; c &amp; ::= &amp; ... \mid -1 \mid 0 \mid 1 \mid ...
+\end{array}
+\]</div>
+<p>And we would like to implement a function <code>eval()</code> which evaluates a <span class="arithmatex">\({\tt (Math Exp)}\)</span> to a value.</p>
+<p>If we were to implement the above with OOP, we would probably use inheritance to extend subclasses of <span class="arithmatex">\({\tt (Math Exp)}\)</span>, and use if-else statements with <code>instanceof</code> to check for a specific subclass instance. Alternative, we can also rely on visitor pattern or delegation.</p>
+<p>It turns out that using Abstract Datatypes to model the above result in some engineering overhead.</p>
+<ul>
+<li>Firstly, encapsulation and abstract tend to hide the underlying structure of the given object (in this case, the <span class="arithmatex">\({\tt Math Exp})\)</span> terms)</li>
+<li>Secondly, using inheritance to model the sum of data types is not perfect (Note: the "sum" here refers to having a fixed set of alternatives of a datatype, not the summation for numerical values)</li>
+<li>For instance, there is no way to stop users of the library code from extending new instances of <span class="arithmatex">\({\tt (MathExp)}\)</span></li>
+</ul>
+<p>The algebraic datatype is an answer to these issues. In essence, it is a type of data structure that consists of products and sums.</p>
+<p>In Scala 3, it is recommended to use <code>enum</code> for Algebraic datatypes.</p>
+<pre><code class="language-scala">enum MathExp:
+    case Plus(e1:MathExp, e2:MathExp)
+    case Minus(e1:MathExp, e2:MathExp)
+    case Mult(e1:MathExp, e2:MathExp)
+    case Div(e1:MathExp, e2:MathExp)
+    case Const(v:Int)
+end MathExp
+</code></pre>
+<p>In the above the <code>MathExp</code> (<code>enum</code>) datatype, there are exactly 5 alternatives. Let's take at look at one case, for instance <code>Plus(e1:MathExp, e2:MathExp)</code>, which states that a plus expression has two operands, both of which are of type <code>MathExp</code>.</p>
+<p>Note that the <code>end MathExp</code> is optional, as long as there is an extra line.
+Alternatively, we can use <code>{ }</code>.</p>
+<pre><code class="language-scala">enum MathExp {
+    case Plus(e1:MathExp, e2:MathExp)
+    case Minus(e1:MathExp, e2:MathExp)
+    case Mult(e1:MathExp, e2:MathExp)
+    case Div(e1:MathExp, e2:MathExp)
+    case Const(v:Int)
+}
+</code></pre>
+<p>We can represent the math expression <code>(1+2) * 3</code> as
+<code>MathExp.Mult(MathExp.Plus(MathExp.Const(1), MathExp.Const(2)), MathExp.Const(3))</code>.  Note that we call <code>Plus(_,_)</code> , <code>Minus(_,_)</code>, <code>Mult(_,_)</code>, <code>Div(_,_)</code> and <code>Const(_)</code> "data constructors", as we use them to construct values of the <code>enum</code> algebraic datatype <code>MathExp</code>.</p>
+<p>Next let's implement an evaluation function based the specification:</p>
+<div class="arithmatex">\[
+eval(e) = \left [ \begin{array}{cl}
+                eval(e_1) + eval(e_2) &amp; if\ e = e_1+e_2 \\
+                eval(e_1) - eval(e_2) &amp; if\ e = e_1-e_2 \\
+                eval(e_1) * eval(e_2) &amp; if\ e = e_1*e_2 \\
+                eval(e_1) / eval(e_2) &amp; if\ e = e_1/e_2 \\
+                c &amp; if\ e = c
+                \end{array}
+        \right.
+\]</div>
+<pre><code class="language-scala">def eval(e:MathExp):Int = e match {
+    case MathExp.Plus(e1, e2)  =&gt; eval(e1) + eval(e2)
+    case MathExp.Minus(e1, e2) =&gt; eval(e1) - eval(e2)
+    case MathExp.Mult(e1, e2)  =&gt; eval(e1) * eval(e2)
+    case MathExp.Div(e1, e2)   =&gt; eval(e1) / eval(e2)
+    case MathExp.Const(i)      =&gt; i
+}
+</code></pre>
+<p>In Scala, the `enum`` Algebraic datatype can be accessed (destructured) via pattern matching.</p>
+<p>If we run:</p>
+<pre><code class="language-scala">eval(MathExp.Mult(MathExp.Plus(MathExp.Const(1), MathExp.Const(2)), MathExp.Const(3)))
+</code></pre>
+<p>we get <code>9</code> as result.</p>
+<p>Let's consider another example where we can implement some real-world data structures using the algebraic datatype.</p>
+<p>Suppose for experimental purposes, we would like to re-implement the list datatype in Scala (even though a builtin one already exists). For simplicity, let's consider a monomorphic version (no generic) version. </p>
+<blockquote>
+<p>We will look into the generic version in the next lesson</p>
+</blockquote>
+<p>In the following we consider the specification of the <code>MyList</code> data type in EBNF:</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+{\tt (MyList)} &amp; l &amp; ::= &amp; Nil \mid Cons(i,l) \\
+{\tt (Int)} &amp; i &amp; ::= &amp; 1 \mid 2 \mid   ...
+\end{array}
+\]</div>
+<p>And we implement using <code>enum</code> in Scala:</p>
+<pre><code class="language-scala">enum MyList {
+    case Nil
+    case Cons(x:Int, xs:MyList)
+}
+</code></pre>
+<p>Next we implement the <code>map</code> function based on the following specification</p>
+<div class="arithmatex">\[
+map(f, l) = \left [ \begin{array}{ll}
+            Nil &amp; if\ l = Nil\\
+            Cons(f(hd), map(f, tl)) &amp; if\ l = Cons(hd, tl)
+            \end{array} \right .
+\]</div>
+<p>Then we could implement the map function</p>
+<pre><code class="language-scala">def mapML(f:Int=&gt;Int, l:MyList):MyList = l match {
+    case MyList.Nil =&gt; MyList.Nil
+    case MyList.Cons(hd, tl) =&gt; MyList.Cons(f(hd), mapML(f,tl))
+}
+</code></pre>
+<p>Running <code>mapML(x =&gt; x+1, MyList.Cons(1,MyList.Nil))</code> yields
+<code>MyList.Cons(2,MyList.Nil)</code>.</p>
+<p>But hang on a second! The <code>map</code> method from the Scala built-in list is a method of a list object, not a stand-alone function.</p>
+<p>In Scala 3, <code>enum</code> allows us to package the method inside <code>enum</code> values.</p>
+<pre><code class="language-scala">enum MyList {
+    case Nil
+    case Cons(x:Int, xs:MyList)
+    def mapML(f:Int=&gt;Int):MyList = this match {
+        case MyList.Nil =&gt; MyList.Nil
+        case MyList.Cons(hd, tl) =&gt; MyList.Cons(f(hd), tl.mapML(f))
+    }
+}
+</code></pre>
+<p>Running:</p>
+<pre><code class="language-scala">val l = MyList.Cons(1, MyList.Nil)
+l.mapML(x=&gt; x+1)
+</code></pre>
+<p>yields the same output as above.</p>
+<h2 id="summary">Summary</h2>
+<p>In this lesson, we have discussed</p>
+<ul>
+<li>Scala's OOP vs Java's OOP</li>
+<li>Scala's FP vs Lambda Calculus</li>
+<li>How to use the <code>List</code> datatype to model and manipulate collections of multiple values.</li>
+<li>How to use the Algebraic data type to define user customized data type to solve complex problems.</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../javascripts/mathjax.js"></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

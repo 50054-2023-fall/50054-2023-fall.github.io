@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>50.054 - Parametric Polymorphism and Adhoc Polymorphism - Compiler Design and Program Analysis 50.054</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../handout/" class="nav-link">Handout</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#50054-parametric-polymorphism-and-adhoc-polymorphism" class="nav-link">50.054 - Parametric Polymorphism and Adhoc Polymorphism</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#learning-outcomes" class="nav-link">Learning Outcomes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#currying" class="nav-link">Currying</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#function-composition" class="nav-link">Function Composition</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#generics" class="nav-link">Generics</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#type-class" class="nav-link">Type class</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#functor" class="nav-link">Functor</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#foldable" class="nav-link">Foldable</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#option-and-either" class="nav-link">Option and Either</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#summary" class="nav-link">Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#appendix" class="nav-link">Appendix</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="50054-parametric-polymorphism-and-adhoc-polymorphism">50.054 - Parametric Polymorphism and Adhoc Polymorphism</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<p>By this end of this lesson, you should be able to </p>
+<ul>
+<li>develop parametrically polymorphic Scala code using Generic, Algebraic Datatype</li>
+<li>safely mix parametric polymoprhism with adhoc polymoprhism (overloading) using type classes </li>
+<li>develop generic programming style code using <code>Functor</code> type class.</li>
+<li>make use of <code>Option</code> and <code>Either</code> to handle and manipulate errors and exceptions. </li>
+</ul>
+<h2 id="currying">Currying</h2>
+<p>In functional programming, we could rewrite a function with multiple arguments into a function that takes the first argument and returns another function that takes the remaining arguments.</p>
+<p>For example,</p>
+<pre><code class="language-scala">def sum(x:Int, y:Int):Int = x + y
+</code></pre>
+<p>can be rewritten into </p>
+<pre><code class="language-scala">def sum_curry(x:Int)(y:Int):Int = x + y
+</code></pre>
+<p>These two functions are equivalent except that</p>
+<ol>
+<li>Their invocations are different, e.g. </li>
+</ol>
+<pre><code class="language-scala">sum(1,2)
+sum_curry(1)(2)
+</code></pre>
+<ol>
+<li>It is easier to reuse the curried version to define other function, e.g.</li>
+</ol>
+<pre><code class="language-scala">def plus1(x:Int):Int = sum_curry(1)(x)
+</code></pre>
+<h2 id="function-composition">Function Composition</h2>
+<p>Every function and method in Scala is an object with a <code>.compose()</code> method. It works like the mathmethical composition.</p>
+<p>In math, let <span class="arithmatex">\(g\)</span> and <span class="arithmatex">\(f\)</span> be functions, then</p>
+<div class="arithmatex">\[
+(g \circ f)(x) \equiv g(f(x))
+\]</div>
+<p>Let <code>g</code> and <code>f</code> be Scala functions (or methods), then</p>
+<pre><code class="language-scala">g.compose(f)
+</code></pre>
+<p>is equivalent to </p>
+<pre><code class="language-scala">x =&gt; g(f(x))
+</code></pre>
+<p>For example</p>
+<pre><code class="language-scala">def f(x:Int):Int = 2 * x + 3
+def g(x:Int):Int = x * x
+
+assert((g.compose(f))(2) == g(f(2)))
+</code></pre>
+<h2 id="generics">Generics</h2>
+<p>Generics is also known as type variables. It enables a language to support parametric polymoprhism. </p>
+<h3 id="polymorphic-functions">Polymorphic functions</h3>
+<p>Recall that the <code>reverse</code> function introduced in the last lesson</p>
+<pre><code class="language-scala">def reverse(l:List[Int]):List[Int] = l match {
+    case Nil =&gt; Nil
+    case (hd::tl) =&gt; reverse(tl) ++ List(hd)
+}
+</code></pre>
+<p>We argue that the same implementation should work for all lists regardless of their elements' type. Thus, we would replace <code>Int</code> by a type variable <code>A</code>.</p>
+<pre><code class="language-scala">def reverse[A](l:List[A]):List[A] = l match {
+    case Nil =&gt; Nil
+    case (hd::tl) =&gt; reverse(tl) ++ List(hd)
+}
+</code></pre>
+<h3 id="polymorphic-algebraic-datatype">Polymorphic Algebraic Datatype</h3>
+<p>Recall that the following Algebraic Datatype from the last lesson. </p>
+<pre><code class="language-scala">enum MyList {
+    case Nil
+    case Cons(x:Int, xs:MyList)
+}
+
+def mapML(l:MyList, f:Int =&gt; Int):MyList = l match {
+    case MyList.Nil =&gt; MyList.Nil
+    case MyList.Cons(hd, tl) =&gt; MyList.Cons(f(hd), mapML(tl, f))
+}
+</code></pre>
+<p>Same observation applies. <code>MyList</code> could have a generic element type <code>A</code> instead of <code>Int</code> and <code>mapML</code> should remains unchanged.</p>
+<pre><code class="language-scala">enum MyList[A] {
+    case Nil // type error
+    case Cons(x:A, xs:MyList[A])
+}
+
+def mapML[A,B](l:MyList[A], f:A =&gt; B):MyList[B] = l match {
+    case MyList.Nil =&gt; MyList.Nil
+    case MyList.Cons(hd, tl) =&gt; MyList.Cons(f(hd), mapML( tl, f))
+}
+</code></pre>
+<p>The caveat here is that the Scala compiler would complain about the <code>Nil</code> case above </p>
+<pre><code>-- Error: ----------------------------------------------------------------------
+2 |    case Nil
+  |    ^^^^^^^^
+  |    cannot determine type argument for enum parent class MyList,
+  |    type parameter type A is invariant
+1 error found
+</code></pre>
+<p>To understand that error, we need to understand how Scala desugar the enum datatype.  The above <code>MyList</code> datatype is desugared as </p>
+<pre><code class="language-scala">enum MyList[A] {
+    case Nil extends MyList[Nothing] // type error
+    case Cons(x:A, xs:MyList[A]) extends MyList[A]
+}
+</code></pre>
+<p>In which all sub cases within the enum type must be sub-class of the enum type. 
+However it is not trivial for <code>Nil</code>. It can't be declared as a subtype of <code>MyList[A]</code> since type variable <code>A</code> is not mentioned in its definition, unlike <code>Cons(x:A, xs:MyList[A])</code>. The best we can get is <code>MyList[Nothing]</code> where <code>Nothing</code> is the subtype of all other types in Scala. (As the dual, <code>Any</code> is the supertype of all other types in Scala). We are getting very close. Now we know that <code>Nil extends MyList[Nothing]</code>. If we can argue that <code>MyList[Nothing] extends MyList[A]</code> then we are all good. For <code>MyList[Nothing] extends MyList[A]</code> to hold, 
+<code>A</code> must be covariant type parameter.</p>
+<p>In type system with subtyping, </p>
+<ul>
+<li>
+<p>a type is <em>covariant</em> if it preserves the subtyping order when it is applied a type constructor. In the above situation, <code>MyList[_]</code> is a type constructor. The type parameter <code>A</code> is covarient because we note <code>Nothing &lt;: A</code> for all <code>A</code>, thus <code>MyList[Nothing] &lt;: MyList[A]</code>. </p>
+</li>
+<li>
+<p>a type is <em>contravariant</em> if it reverses the subtyping order when it is applied to a type constructor. For instance, given function type <code>A =&gt; Boolean</code>, the type parameter <code>A</code> is contravariant, because for <code>A &lt;: B</code>, we have <code>B =&gt; Boolean &lt;: A =&gt; Boolean</code>. (We can use functions of type
+<code>B =&gt; Boolean</code> in the context where a function <code>A =&gt; Boolean</code> is expected, but not the other way round.)</p>
+</li>
+<li>
+<p>a type is <em>invariant</em> if it does not preserve nor reverse the subtyping order when it is applied to a type constructor. </p>
+</li>
+</ul>
+<p>Hence to fix the above type error with the <code>MyList[A]</code> datatype, we declared that <code>A</code> is covariant, <code>+A</code>. </p>
+<pre><code class="language-scala">enum MyList[+A] {
+    case Nil // type error is fixed.
+    case Cons(x:A, xs:MyList[A])
+}
+
+def mapML[A,B](l:MyList[A])(f:A =&gt; B):MyList[B] = l match {
+    case MyList.Nil =&gt; MyList.Nil
+    case MyList.Cons(hd, tl) =&gt; MyList.Cons(f(hd), mapML(tl)(f))
+}
+</code></pre>
+<p>For easy of reasoning, we also rewrite <code>mapML</code> into currying style.</p>
+<p>Recall that we could make <code>mapML</code> function as a method of <code>MyList</code></p>
+<pre><code class="language-scala">enum MyList[+A] {
+    case Nil
+    case Cons(x:A, xs:MyList[A])
+    def mapML[B](f:A=&gt;B):MyList[B] = this match { 
+        case MyList.Nil =&gt; MyList.Nil
+        case MyList.Cons(hd, tl) =&gt; MyList.Cons(f(hd), tl.mapML(f))
+    }
+}
+</code></pre>
+<ul>
+<li><a href="https://docs.scala-lang.org/tour/variances.html">Scala Variances</a></li>
+</ul>
+<h2 id="type-class">Type class</h2>
+<p>Suppose we would like to convert some of the Scala value to JSON string.</p>
+<p>We could rely on overloading.</p>
+<pre><code class="language-scala">def toJS(v:Int):String = v.toString
+def toJS(v:String):String = s&quot;'${v}'&quot;
+def toJS(v:Boolean):String = v.toString
+</code></pre>
+<p>Given <code>v</code> is a Scala string value, <code>s"some_prefix ${v} some_suffix"</code> denotes a Scala string interpolation, which inserts <code>v</code>'s content into the "place holder" in the string <code>"some_prefix ${v} some_suffix"</code> where the 
+<code>${v}</code> is the place holder.</p>
+<p>However this becomes hard to manage as we consider complex datatype.</p>
+<pre><code class="language-scala">enum Contact {
+    case Email(e:String)
+    case Phone(ph:String)
+}
+
+import Contact.*
+def toJS(c:Contact):String = c match {
+    case Email(e) =&gt; s&quot;'email': ${toJS(e)}&quot; // compilation error
+    case Phone(ph) =&gt; s&quot;'phone': ${toJS(ph)}&quot; // compilation error
+}
+</code></pre>
+<p>When we try to define the <code>toJS</code> function for <code>Contact</code> datatype, we can't make use of the <code>toJS</code> function for string value because the compiler is confused that we are trying to make recursive calls. This is the first issue we faced.</p>
+<p>Let's pretend that the first issue has been addressed. There's still another issue.</p>
+<p>Consider</p>
+<pre><code class="language-scala">case class Person(name:String, contacts:List[Contact])
+case class Team(members:List[Person])
+</code></pre>
+<p>A <code>case class</code> is like a normal class we have seen earlier except that we can apply pattern matching to its values. 
+Let's continue to overload <code>toJS</code> to handle <code>Person</code> and <code>Team</code>. </p>
+<pre><code class="language-scala">def toJS(p:Person):String = p match {
+    case Person(name, contacts) =&gt; s&quot;'person':{ 'name':${toJS(name)},  'contacts':${toJS(contacts)} }&quot;
+}
+def toJS(cs:List[Contact]):String = {
+    val j = cs.map(c=&gt;toJS(c)).mkString(&quot;,&quot;)
+    s&quot;[${j}]&quot;
+}
+
+def toJS(t:Team):String = t match {
+    case Team(members) =&gt; s&quot;'team':{ 'members':${toJS(members)} }&quot;
+}
+
+def toJS(ps:List[Person]):String = {
+    val j = ps.map(p=&gt;toJS(p)).mkString(&quot;,&quot;)
+    s&quot;[${j}]&quot;
+}
+</code></pre>
+<p>The second issue is that the <code>toJS(cs:List[Contact])</code> and <code>toJS(ps:List[Person])</code> are the identical modulo the variable names. Can we combine two into one?</p>
+<pre><code class="language-scala">def toJS[A](vs:List[A]):String = {
+        val j = vs.map(v=&gt;toJS(v)).mkString(&quot;,&quot;) // compiler error
+    s&quot;[${j}]&quot;
+}
+</code></pre>
+<p>However a compilation error occurs because the compiler is unable to resolve the <code>toJS[A](v:A)</code> used in the <code>.map()</code>.</p>
+<p>It seems that we need to give some extra information to the compiler so that it knows that when we use the above generic <code>toJS</code> we are referring to either <code>Person</code> or <code>Contact</code>, or whatever type that has a <code>toJS</code> defined.</p>
+<p>One solution to address the two above issues is to use <em>type class</em>.
+In Scala 3, a type class is defined by a polymoprhic trait and a set of type class instances. </p>
+<pre><code class="language-scala">trait JS[A] {
+    def toJS(v:A):String
+}
+
+given toJSInt:JS[Int] = new JS[Int]{ 
+    def toJS(v:Int):String = v.toString
+}
+
+given toJSString:JS[String] = new JS[String] {
+    def toJS(v:String):String = s&quot;'${v}'&quot;
+}
+
+given toJSBoolean:JS[Boolean] = new JS[Boolean] {
+    def toJS(v:Boolean):String = v.toString
+}
+
+given toJSContact(using jsstr:JS[String]):JS[Contact] = new JS[Contact] {
+    import Contact.*
+    def toJS(c:Contact):String = c match {
+        case Email(e) =&gt; s&quot;'email': ${jsstr.toJS(e)}&quot; // compilation error is fixed
+        case Phone(ph) =&gt; s&quot;'phone': ${jsstr.toJS(ph)}&quot; // compilation error is fixed
+    }
+}
+
+given toJSPerson(using jsstr:JS[String], jsl:JS[List[Contact]]):JS[Person] = new JS[Person] {
+    def toJS(p:Person):String = p match {
+        case Person(name, contacts) =&gt; s&quot;'person':{ 'name':${jsstr.toJS(name)},  'contacts':${jsl.toJS(contacts)} }&quot;
+    }
+}
+
+given toJSTeam(using jsl:JS[List[Person]]):JS[Team] = new JS[Team] {
+    def toJS(t:Team):String = t match {
+        case Team(members) =&gt; s&quot;'team':{ 'members':${jsl.toJS(members)} }&quot;
+    }
+}
+
+given toJSList[A](using jsa:JS[A]):JS[List[A]] = new JS[List[A]] {
+    def toJS(as:List[A]):String = {
+        val j = as.map(a=&gt;jsa.toJS(a)).mkString(&quot;,&quot;)
+        s&quot;[${j}]&quot;
+    }
+}
+</code></pre>
+<p><code>given</code> defines a type class instance. An instance consists of a name and the context parameters (those with <code>using</code>) and instance type. In the body of the type class instance, we instantiate an anonymous object that extends type class with the specific type and provide the defintion. We can refer to the particular type class instance by the instance's name. For instance</p>
+<pre><code class="language-scala">import Contact.*
+val myTeam = Team( List(
+    Person(&quot;kenny&quot;, List(Email(&quot;kenny_lu@sutd.edu.sg&quot;))), 
+    Person(&quot;simon&quot;, List(Email(&quot;simon_perrault@sutd.edu.sg&quot;)))
+))
+</code></pre>
+<p><code>toJSTeam.toJS(myTeam)</code> yields</p>
+<pre><code class="language-javascript">'team':{ 'members':['person':{ 'name':'kenny',  'contacts':['email': 'kenny_lu@sutd.edu.sg'] },'person':{ 'name':'simon',  'contacts':['email': 'simon_perrault@sutd.edu.sg'] }] }
+</code></pre>
+<p>We can also refer to the type class instance by the instace's type. For example, recall the last two instances. In the context of the <code>toJSTeam</code>, we refer to another instance of type <code>JS[List[Person]]</code>. Note that none of the defined instances has the required type. Scala is smart enought to synthesize it from the instances of <code>toJSList</code> and <code>toJSPerson</code>.  Given the required type class instance is <code>JS[List[Person]]</code>, the type class resolver finds the instance <code>toJSList</code> having type <code>JS[List[A]]</code>, and it unifies both and find that <code>A=Person</code>. In the context of the instance <code>toJSList</code>, <code>JS[A]</code> is demanded. We can refine the required instance's type as <code>JS[Person]</code>, which is <code>toJSPerson</code>.</p>
+<p>Note that when we call a function that requires a type class context, we do not need to provide the argument for the type class instance. </p>
+<pre><code class="language-scala">def printAsJSON[A](v:A)(using jsa:JS[A]):Unit = {
+    println(jsa.toJS(v))
+}
+
+printAsJSON(myTeam)
+</code></pre>
+<p>Type class enables us to develop modular and resusable codes. It is related to a topic of <em>Generic Programming</em>. In computer programming, generic programming refers to the coding approach which an instance of code is written once and used for many different types/instances of values/objects.</p>
+<p>In the next few section, we consider some common patterns in FP that are promoting generic programming.</p>
+<h2 id="functor">Functor</h2>
+<p>Recall that we have a <code>map</code> method for list datatype. </p>
+<pre><code class="language-scala">val l = List(1,2,3)
+l.map(x =&gt; x + 1)
+</code></pre>
+<p>Can we make <code>map</code> to work for other data type? For example</p>
+<pre><code class="language-scala">enum BTree[+A] {
+    case Empty
+    case Node(v:A, lft:BTree[A], rgt:BTree[A]) 
+}
+</code></pre>
+<p>It turns out that extending <code>map</code> to different datatypes is similar to <code>toJS</code> function that we implemented earlier. We consider introducing a type class for this purpose.</p>
+<pre><code class="language-scala">trait Functor[T[_]] {
+    def map[A,B](t:T[A])(f:A =&gt; B):T[B]
+}
+</code></pre>
+<p>In the above type class definition, <code>T[_]</code> denotes a polymorphic type that of kind <code>* =&gt; *</code>. A <em>kind</em> is a type of types. In the above, it means <code>Functor</code> takes any type constructors <code>T</code>. When <code>T</code> is instantiated, it could be <code>List[_]</code> or <code>BTree[_]</code> and etc. (C.f. In the type class <code>JS[A]</code>, the type argument has kind <code>*</code>.)</p>
+<pre><code class="language-scala">given listFunctor:Functor[List] = new Functor[List] {
+    def map[A,B](t:List[A])(f:A =&gt; B):List[B] = t.map(f)
+}
+
+given btreeFunctor:Functor[BTree] = new Functor[BTree] {
+    import BTree.*
+    def map[A,B](t:BTree[A])(f:A =&gt; B):BTree[B] = t match {
+        case Empty =&gt; Empty
+        case Node(v, lft, rgt) =&gt; Node(f(v), map(lft)(f), map(rgt)(f))
+    }
+}
+</code></pre>
+<p>Some example</p>
+<pre><code class="language-scala">val l = List(1,2,3)
+listFunctor.map(l)((x:Int) =&gt; x + 1)
+
+val t = BTree.Node(2, BTree.Node(1, BTree.Empty, BTree.Empty), BTree.Node(3, BTree.Empty, BTree.Empty))
+btreeFunctor.map(t)((x:Int) =&gt; x + 1)
+
+</code></pre>
+<h3 id="functor-laws">Functor Laws</h3>
+<p>All instances of functor must obey a set of mathematic laws for their computation to be predictable.</p>
+<p>Let <code>i</code> be a functor instance
+1. Identity: <code>i =&gt; map(i)(x =&gt; x)</code> <span class="arithmatex">\(\equiv\)</span> <code>x =&gt; x</code>. When performing the mapping operation, if the values in the functor are mapped to themselves, the result will be an unmodified functor.
+2. Composition Morphism: <code>i=&gt; map(i)(f.compose(g))</code> <span class="arithmatex">\(\equiv\)</span> <code>(i =&gt; map(i)(f)).compose(j =&gt; map(j)(g))</code>. If two sequential mapping operations are performed one after the other using two functions, the result should be the same as a single mapping operation with one function that is equivalent to applying the first function to the result of the second.</p>
+<h2 id="foldable">Foldable</h2>
+<p>Similarly we can define a <code>Foldable</code> type class for generic and overloaded <code>foldLeft</code>( and <code>foldRight</code>).</p>
+<pre><code class="language-scala">trait Foldable[T[_]]{
+    def foldLeft[A,B](t:T[B])(acc:A)(f:(A,B)=&gt;A):A
+}
+
+given listFoldable:Foldable[List] = new Foldable[List] {
+    def foldLeft[A,B](t:List[B])(acc:A)(f:(A,B)=&gt;A):A = t.foldLeft(acc)(f)
+}
+
+given btreeFoldable:Foldable[BTree] = new Foldable[BTree] {
+    import BTree.*
+    def foldLeft[A,B](t:BTree[B])(acc:A)(f:(A,B)=&gt;A):A = t match {
+        case Empty =&gt; acc
+        case Node(v, lft, rgt) =&gt; {
+            val acc1 = f(acc,v)
+            val acc2 = foldLeft(lft)(acc1)(f)
+            foldLeft(rgt)(acc2)(f)
+        }
+    }
+}
+
+listFoldable.foldLeft(l)(0)((x:Int,y:Int) =&gt; x + y)
+btreeFoldable.foldLeft(t)(0)((x:Int,y:Int) =&gt; x + y)
+</code></pre>
+<h2 id="option-and-either">Option and Either</h2>
+<p>Recall in the earlier lesson, we encountered the following example. </p>
+<pre><code class="language-scala">enum MathExp {
+    case Plus(e1:MathExp, e2:MathExp)
+    case Minus(e1:MathExp, e2:MathExp)
+    case Mult(e1:MathExp, e2:MathExp)
+    case Div(e1:MathExp, e2:MathExp)
+    case Const(v:Int)
+}
+
+def eval(e:MathExp):Int = e match {
+    case MathExp.Plus(e1, e2)  =&gt; eval(e1) + eval(e2)
+    case MathExp.Minus(e1, e2) =&gt; eval(e1) - eval(e2)
+    case MathExp.Mult(e1, e2)  =&gt; eval(e1) * eval(e2)
+    case MathExp.Div(e1, e2)   =&gt; eval(e1) / eval(e2)
+    case MathExp.Const(i)      =&gt; i
+}
+</code></pre>
+<p>An error occurs when we try to evalue a <code>MathExp</code> which contains a division by zero sub-expression. Executing </p>
+<pre><code class="language-scala">import MathExp.*
+eval(Div(Const(1), Minus(Const(2), Const(2))))
+</code></pre>
+<p>yields</p>
+<pre><code>java.lang.ArithmeticException: / by zero
+  at rs$line$2$.eval(rs$line$2:5)
+  ... 41 elided
+</code></pre>
+<p>Like other main stream languages, we could use <code>try-catch</code> statement to handle the exception. </p>
+<pre><code class="language-scala">try {
+    import MathExp.*
+    eval(Div(Const(1), Minus(Const(2), Const(2))))
+}
+catch {
+    case e:java.lang.ArithmeticException =&gt; println(&quot;handinging div by zero&quot;)
+}
+</code></pre>
+<p>One downside of this approach is that at compile type it is hard to track the unhandled exceptions, (in particular with the presence of Java unchecked exceptions.)</p>
+<p>A more fine-grained approach is to use algebraic datatype to "inform" the compiler (and other programmers who use this function and datatypes).</p>
+<p>Consider the following builtin Scala datatype <code>Option</code></p>
+<pre><code class="language-scala">// no need to run this.
+enum Option[+A] {
+    case None
+    case Some(v:A)
+}
+</code></pre>
+<pre><code class="language-scala">def eval(e:MathExp):Option[Int] = e match {
+    case MathExp.Plus(e1, e2)  =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(v2) =&gt; Some(v1 + v2)            
+        }
+    }
+    case MathExp.Minus(e1, e2) =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(v2) =&gt; Some(v1 - v2)            
+        }
+    }
+    case MathExp.Mult(e1, e2)  =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(v2) =&gt; Some(v1 * v2)            
+        }
+    }
+    case MathExp.Div(e1, e2)   =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(0)  =&gt; None
+            case Some(v2) =&gt; Some(v1 / v2)            
+        }
+    }
+    case MathExp.Const(i)      =&gt; Some(i)
+}
+</code></pre>
+<p>When we execute <code>eval(Div(Const(1), Minus(Const(2), Const(2))))</code>, 
+we get <code>None</code> as the result instead of the exception. One advantage of this is that whoever is using <code>eval</code> function has to respect that its return type is <code>Option[Int]</code> instead of just <code>Int</code> therefore, a <code>match</code> must be applied before using the result to look out for potential <code>None</code> value.</p>
+<p>There are still two drawbacks. Firstly, the updated version of the <code>eval</code> function is much more verbose compared to the original <em>unsafe</em> version. We will address this issue in the next lesson. Secondly, we lose the chance of reporting where the division by zero has occured. Let's address the second issue.</p>
+<p>We could instead of using <code>Option</code>, use the <code>Either</code> datatype</p>
+<pre><code class="language-scala">// no need to run this, it's builtin
+enum Either[+A, +B] {
+    case Left(v:A)
+    case Right(v:B)
+}
+</code></pre>
+<pre><code class="language-scala">type ErrMsg = String
+
+def eval(e: MathExp): Either[ErrMsg,Int] = e match {
+    case MathExp.Plus(e1, e2) =&gt;
+        eval(e1) match {
+            case Left(m) =&gt; Left(m)
+            case Right(v1) =&gt;
+                eval(e2) match {
+                    case Left(m) =&gt; Left(m)
+                    case Right(v2) =&gt; Right(v1 + v2)
+                }
+        }
+    case MathExp.Minus(e1, e2) =&gt;
+        eval(e1) match {
+            case Left(m) =&gt; Left(m)
+            case Right(v1) =&gt;
+                eval(e2) match {
+                    case Left(m) =&gt; Left(m)
+                    case Right(v2) =&gt; Right(v1 - v2)
+                }
+        }
+    case MathExp.Mult(e1, e2) =&gt;
+        eval(e1) match {
+            case Left(m) =&gt; Left(m)
+            case Right(v1) =&gt;
+                eval(e2) match {
+                    case Left(m) =&gt; Left(m)
+                    case Right(v2) =&gt; Right(v1 * v2)
+                }
+        }
+    case MathExp.Div(e1, e2) =&gt;
+        eval(e1) match {
+            case Left(m) =&gt; Left(m)
+            case Right(v1) =&gt;
+                eval(e2) match {
+                    case Left(m) =&gt; Left(m)
+                    case Right(0) =&gt;
+                        Left(s&quot;div by zero caused by ${e.toString}&quot;)
+                    case Right(v2) =&gt; Right(v1 / v2)
+                }
+        }
+    case MathExp.Const(i) =&gt; Right(i)
+}
+</code></pre>
+<p>Executing <code>eval(Div(Const(1), Minus(Const(2), Const(2))))</code> will yield </p>
+<pre><code>Left(div by zero caused by Div(Const(1),Minus(Const(2),Const(2))))
+</code></pre>
+<h2 id="summary">Summary</h2>
+<p>In this lesson, we have discussed </p>
+<ul>
+<li>how to develop parametrically polymorphic Scala code using Generic, Algebraic Datatype</li>
+<li>how to safely mix parametric polymoprhism with adhoc polymoprhism (overloading) using type classes </li>
+<li>how to develop generic programming style code using <code>Functor</code> type class.</li>
+<li>how to make use of <code>Option</code> and <code>Either</code> to handle and manipulate errors and exceptions. </li>
+</ul>
+<h2 id="appendix">Appendix</h2>
+<h3 id="generalized-algebraic-data-type">Generalized Algebraic Data Type</h3>
+<p>Generalized Algebraic Data Type is an extension to Algebraic Data Type, in which each case extends a more specific version of the top level algebraic data type. Consider the following example.</p>
+<p>Firstly, we need some type acrobatics to encode nature numbers on the level of type. </p>
+<pre><code class="language-scala">enum Zero {
+    case Zero
+}
+enum Succ[A] {
+    case Succ(v:A)
+}
+</code></pre>
+<p>Next we define our GADT <code>SList[S,A]</code> which is a generic list of elements <code>A</code> and with size <code>S</code>. </p>
+<pre><code class="language-scala">enum SList[S,+A] {
+    case Nil extends SList[Zero,Nothing] // additional type constraint S = Zero
+    case Cons[N,A](hd:A, tl:SList[N,A]) extends SList[Succ[N],A]  // add'n type constraint S = Succ[N]
+}
+</code></pre>
+<p>In the first subcase <code>Nil</code>, it is declared with the type of <code>SList[Zero, Nothing]</code> which indicates on type level that the list is empty. In the second case <code>Cons</code>, we define it to have the type <code>SList[Succ[N],A]</code> for some natural number <code>N</code>. This indicates on the type level that the list is non-empty. </p>
+<p>Having these information lifted to the type level allows us to define a type safe <code>head</code> function.</p>
+<pre><code class="language-scala">import SList.*
+
+def head[A,N](sl:SList[Succ[N],A]):A = sl match {
+    case Cons(hd, tl) =&gt; hd
+}
+</code></pre>
+<p>Compiling <code>head(Nil)</code> yields a type error. </p>
+<p>Similarly we can define a size-aware function <code>snoc</code> which add an element at the tail of a list. </p>
+<pre><code class="language-scala">def snoc[A,N](v:A, sl:SList[N,A]):SList[Succ[N],A] = sl match {
+    case Nil =&gt; Cons(v,Nil)
+    // case Cons(hd, tl) =&gt; snoc(v, tl) will result in compilation error.
+    case Cons(hd, tl) =&gt; Cons(hd, snoc(v, tl))
+}
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../javascripts/mathjax.js"></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

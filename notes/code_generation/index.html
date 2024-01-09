@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Code Generation - Compiler Design and Program Analysis 50.054</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="../..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-code-generation">50.054 - Code Generation</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcomes">Learning Outcomes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#recap-compiler-pipeline">Recap Compiler Pipeline</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#instruction-selection">Instruction Selection</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#from-pa-to-3-address-target-platform">From PA to 3-address target platform</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#jvm-bytecode-reduced-set">JVM bytecode (reduced set)</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#jvm-bytecode-operational-semantics">JVM bytecode operational semantics</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#conversion-from-pa-to-jvm-bytecodes">Conversion from PA to JVM bytecodes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#optimizing-jvm-bytecode">Optimizing JVM bytecode</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-code-generation">50.054 - Code Generation</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Name the difference among the target code platforms</li>
+<li>Apply SSA-based register allocation to generate 3-address code from Pseudo Assembly</li>
+<li>Handle register spilling</li>
+<li>Implement the target code generation to JVM bytecode given a Pseudo Assembly Program</li>
+</ol>
+<h2 id="recap-compiler-pipeline">Recap Compiler Pipeline</h2>
+<div class="mermaid">graph LR
+A[Lexing] --&gt;B[Parsing] --&gt; C[Semantic Analysis] --&gt; D[Optimization] --&gt; E[Target Code Generation]
+D --&gt; C
+</div>
+<p>For Target Code Generation, we consider some IR as input, the target code (executable) as the output.</p>
+<h2 id="instruction-selection">Instruction Selection</h2>
+<p>Instruction selection is a process of choosing the target platform on which the language to be executed. </p>
+<p>There are mainly 3 kinds of target platforms.</p>
+<ul>
+<li>3-address instruction<ul>
+<li>RISC (Reduced Instruction Set Computer) architecture. E.g. Apple PowerPC, ARM, Pseudo Assembly</li>
+</ul>
+</li>
+<li>2-address instruction<ul>
+<li>CISC (Complex Instruction Set Computer) architecture. E.g. Intel x86</li>
+</ul>
+</li>
+<li>1-address instruction<ul>
+<li>Stack machine. E.g. JVM</li>
+</ul>
+</li>
+</ul>
+<h3 id="assembly-code-vs-machine-code">Assembly code vs Machine code</h3>
+<p>Note that the instruction formats mentioned here are the human-readable representations of the target code. The actual target code (machine code) is in binary format.</p>
+<h3 id="3-address-instruction">3-address instruction</h3>
+<p>In 3-address instruction target platform, each instruction is set to use 3 addresses in maximum.
+For instance, the Pseudo Assembly we studied earlier is a kind of 3-address instruction without the hardware restriction.</p>
+<p>For instance in 3 address instruction, we have instructions that look like </p>
+<pre><code>x &lt;- 1
+y &lt;- 2
+r &lt;- x + y
+</code></pre>
+<p>where <code>r</code>, <code>x</code> and <code>y</code> are registers . Alternatively, in some other 3 address instruction format, we express the code fragement above in a prefix notation, </p>
+<pre><code>load x 1
+load y 2
+add r x y
+</code></pre>
+<p>The advantage of having more register (addresses) per instruction allows us to huge room of code optimization while keeping a relative simple and small set of instructions (for instance, consider our Pseudo Assembly has a simple set.)</p>
+<h3 id="2-address-instruction">2-address instruction</h3>
+<p>In 2-address instruction target platform, each instruction has maximum 2 addresses. As a result, some of the single line instruction in 3-address instruction has to be encoded as multiple instructions in 2 address platform. For example, to add <code>x</code> and <code>y</code> and store the result in <code>r</code>, we have to write</p>
+<pre><code>load x 1
+load y 2
+add x y
+</code></pre>
+<p>in the 3rd instruction we add the values stored in registers <code>x</code> and <code>y</code>. The sum will be stored in <code>x</code>. In the last statement, we move the result from <code>x</code> to <code>r</code>.</p>
+<p>As the result, we need fewer registers (in minimum) to carry out operations. On the other hands, the set of instructions in 2-address instruction are often more complex.</p>
+<h3 id="1-address-instruction">1-address instruction</h3>
+<p>In the exterem case, we find some target platform has only 1 address instruction. This kind of target is also known as the P-code (P for Pascal) or the stack machine code. </p>
+<p>For example for the same program, we need t9o encode it in 1-address instruction as follows</p>
+<pre><code>push 1
+push 2
+add 
+store r
+</code></pre>
+<p>In the first instruction, we push the constant 1 to the left operand register (or the 1st register). In the second instruction, we push the constant 2 to the right oeprand register (the 2nd register). In the 3rd instruction, we apply the add operation to sum up the two registers and the result is stored in the first register. The 2nd register is cleared (or popped). In the last instruction, we pop the result from the first register store it in a temporary variable <code>r</code></p>
+<p>The benefit of 1 address intruction is having a minimum and uniform requirement for the hardware. It requrest the least amount registers, for example, JVM has only 3 registers. On the other hand, its instruction set is the most complex.</p>
+<h2 id="from-pa-to-3-address-target-platform">From PA to 3-address target platform</h2>
+<p>In this section, we consider generating code for a target platform that using 3-address instruciton.</p>
+<h3 id="register-allocation-problem">Register Allocation Problem</h3>
+<p>Let's consider the register allocation problem. Recall that in Pseudo Assembly, we have unlimited temporary variables and registers. Among all the examples of PA we seen so far, we did not use any register except for the return register <code>rret</code>.</p>
+<p>Such an assumption is no longer valid in the code generation phase. We face two major constraints.</p>
+<ol>
+<li>Most of the operations can be only applied to registers, not to temporary variables. Operands from temporary variables need to be loaded to some registers before the application of the operation.</li>
+<li>The number of registers is finite and often limited. This implies that we can't possibly load all the temporary variables to registers. At some point, we need to unload the content of some register to the temporary variable to make room for the next operation.</li>
+</ol>
+<p>For example, the following PA program </p>
+<pre><code class="language-java">// PA1
+1: x &lt;- inpput
+2: y &lt;- x + 1
+3: z &lt;- y + 1
+4: w &lt;- y * z
+5: rret &lt;- w
+6: ret
+</code></pre>
+<p>has to be translated into</p>
+<pre><code class="language-java">1: r0 &lt;- input
+2: r1 &lt;- r0 + 1
+3: r2 &lt;- r1 + 1
+4: r3 &lt;- r1 * r2
+5: rret &lt;- r3
+6: ret
+</code></pre>
+<p>assuming we have 4 other registers <code>r0</code>, <code>r1</code>, <code>r2</code> and <code>r3</code>, besides <code>rret</code>. We can map the PA variables <code>{x : r0, y : r1, z : r2, w : r3}</code></p>
+<p>When we only have 3 other registers excluding <code>rret</code> we need to offload some result into some temporary variable. The offloading of the result from registers to temporary variables is also known as <em>register spilling</em>.</p>
+<pre><code class="language-java">1: r0 &lt;- input
+2: r1 &lt;- r0 + 1
+3: r2 &lt;- r1 + 1
+4: x  &lt;- r0
+5: r0 &lt;- r1 * r2
+6: rret &lt;- r0
+7: ret
+</code></pre>
+<p>The above program will work within the hardware constraint (3 extra registers besides <code>rret</code>). Now the register allocation, <code>{x : r0, y : r1, z : r2}</code> is only valid for instructions <code>1-4</code> and the alloction for instructions <code>5-7</code> is <code>{w : r0, y : r1, z: r2}</code>.</p>
+<p>As we can argue, we could avoid the offloading by mapping <code>w</code> to <code>rret</code> since it is the one being retured. </p>
+<pre><code class="language-java">1: r0 &lt;- input
+2: r1 &lt;- r0 + 1
+3: r2 &lt;- r1 + 1
+4: rret &lt;- r1 * r2
+5: ret
+</code></pre>
+<p>However this option is not always possible, as the following the <code>w</code> might not be returned variable in some other examples.</p>
+<p>We could also avoid the offloading by exploiting the liveness analysis, that <code>x</code> is not live from instruction <code>3</code> onwards, hence we should not even save the result of <code>r0</code> to the temporary variable <code>x</code>.</p>
+<pre><code class="language-java">1: r0 &lt;- input
+2: r1 &lt;- r0 + 1
+3: r2 &lt;- r1 + 1
+4: r0 &lt;- r1 * r2
+5: rret &lt;- r0
+6: ret
+</code></pre>
+<p>However this option is not always possible, as in some other situation <code>x</code> is needed later.</p>
+<p>The Register Allocation Problem is then define as follows.</p>
+<p>Given a program <span class="arithmatex">\(p\)</span>, and <span class="arithmatex">\(k\)</span> registers, find an optimal register assignment so that the register spilling is minimized.</p>
+<h3 id="interference-graph">Interference Graph</h3>
+<p>To solve the register allocation problem, we define a data structure called <em>the interference graph.</em> </p>
+<p>Two temporary variables are <em>interferring</em> each other when they are both "live" at the same time in a program.  In the following we include the liveness analysis result as the comments in the program <code>PA1</code>.</p>
+<pre><code class="language-java">// PA1
+1: x &lt;- inpput // {input}
+2: y &lt;- x + 1  // {x}
+3: z &lt;- y + 1  // {y}
+4: w &lt;- y * z  // {y,z}
+5: rret &lt;- w   // {w}
+6: ret         // {}
+</code></pre>
+<p>We conclude that <code>y</code> and <code>z</code> are interfering each other. Hence they should not be sharing the same register. </p>
+<div class="mermaid">graph TD;
+    input
+    x
+    y --- z
+    w 
+</div>
+<p>From the graph we can tell that "at peak" we need two registers concurrently, hence the above program can be translated to the target code using 2 registers excluding the <code>rret</code> register. </p>
+<p>For example we annotate the graph with the mapped registers <code>r0</code> and <code>r1</code> </p>
+<div class="mermaid">graph TD;
+    input["input(r0)"]
+    x["x(r0)"]
+    y["y(r0)"] --- z["z(r1)"]
+    w["w(r0)"]
+</div>
+<p>And we can generate the following output </p>
+<pre><code class="language-java">1: r0 &lt;- inpput   
+2: r0 &lt;- r0 + 1  
+3: r1 &lt;- r0 + 1  
+4: r0 &lt;- r0 * r1  
+5: rret &lt;- r0   
+6: ret         
+</code></pre>
+<h3 id="graph-coloring-problem">Graph Coloring Problem</h3>
+<p>From the above example, we find that we can recast the register allocation problem into a graph coloring problem. </p>
+<p>The graph coloring problem is defined as follows.</p>
+<p>Given a undirected graph, and <span class="arithmatex">\(k\)</span> colors, find a coloring plan in which no adjacent vertices sharing the same color, if possible. </p>
+<p>Unfortunately, this problem is <em>NP-complete</em> in general. No efficient algorithm is known.</p>
+<p>Fortunatley, we do know a subset of graphs in which a polynomial time coloring algorithm exists. </p>
+<h4 id="chordal-graph">Chordal Graph</h4>
+<p>A graph <span class="arithmatex">\(G = (V,E)\)</span> is <em>chordal</em> if, for all cycle <span class="arithmatex">\(v_1,...,v_n\)</span> in <span class="arithmatex">\(G\)</span> with <span class="arithmatex">\(n &gt; 3\)</span> there exists an edge <span class="arithmatex">\((v_i,v_j) \in E\)</span> and <span class="arithmatex">\(i, j \in \{1,...,n\}\)</span> such that <span class="arithmatex">\((v_i, v_j)\)</span> is not part of the cycle.</p>
+<p>For example, the following graph</p>
+<div class="mermaid">graph TD
+    v1 --- v2 --- v3 --- v4 --- v1
+    v2 --- v4
+</div>
+<p>is chordal, because of <span class="arithmatex">\((v_2,v_4)\)</span>.</p>
+<p>The following graph </p>
+<div class="mermaid">graph TD
+    v1 --- v2 --- v3 --- v4 --- v1
+</div>
+<p>is not chordal, or <em>chordless</em>.</p>
+<p>It is a known result that a the coloring problem of chordal graphs can be solved in polynomial time.</p>
+<h4 id="an-example">An Example</h4>
+<p>Consider the following PA program with the variable liveness result as comments</p>
+<pre><code class="language-java">// PA2
+1: a &lt;- 0           // {}
+2: b &lt;- 1           // {a}
+3: c &lt;- a + b       // {a, b}
+4: d &lt;- b + c       // {b, c}
+5: a &lt;- c + d       // {c, d}
+6: e &lt;- 2           // {a}
+7: d &lt;- a + e       // {a, e}
+8: r_ret &lt;- e + d   // {e, d}
+9: ret 
+</code></pre>
+<p>We observe the interference graph </p>
+<div class="mermaid">graph TD
+    a --- b --- c --- d 
+    a --- e --- d
+</div>
+<p>and find that it is chordless.</p>
+<h4 id="ssa-saves-the-day">SSA saves the day!</h4>
+<p>With some research breakthroughs in 2002-2006, it was proven that programs in SSA forms are always having chordal interference graph.</p>
+<p>For example, if we apply SSA conversion to <code>PA2</code></p>
+<p>We have the following</p>
+<pre><code class="language-java">// PA_SSA2
+1: a1 &lt;- 0           // {}
+2: b1 &lt;- 1           // {a1}
+3: c1 &lt;- a1 + b1     // {a1, b1}
+4: d1 &lt;- b1 + c1     // {b1, c1}
+5: a2 &lt;- c1 + d1     // {c1, d1}
+6: e1 &lt;- 2           // {a2}
+7: d2 &lt;- a2 + e1     // {a2, e1}
+8: r_ret &lt;- e1 + d2  // {e1, d2}
+9: ret 
+</code></pre>
+<p>The liveness analysis algorithm can be adapted to SSA with the following adjustment.</p>
+<p>We define the <span class="arithmatex">\(join(s_i)\)</span> function as follows</p>
+<div class="arithmatex">\[
+join(s_i) = \bigsqcup_{v_j \in succ(v_i)} \Theta_{i,j}(s_j) 
+\]</div>
+<p>where <span class="arithmatex">\(\Theta_{i,j}\)</span> is a variable substitution derived from phi assignment of the labeled instruction at <span class="arithmatex">\(j : \overline{\phi}\ instr\)</span>. </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+\Theta_{i,j} &amp; = &amp; \{ (t_i/t_k) \mid t_k = phi(..., i : t_i, ...) \in \overline{\phi} \}
+\end{array}
+\]</div>
+<p>The monotonic functions can be defined by the following cases.</p>
+<ul>
+<li>case <span class="arithmatex">\(l: \overline{\phi}\ ret\)</span>, <span class="arithmatex">\(s_l = \{\}\)</span></li>
+<li>case <span class="arithmatex">\(l: \overline{\phi}\ t \leftarrow src\)</span>, <span class="arithmatex">\(s_l = join(s_l) - \{ t \} \cup var(src)\)</span></li>
+<li>case <span class="arithmatex">\(l: \overline{\phi}\ t \leftarrow src_1\ op\ src_2\)</span>, <span class="arithmatex">\(s_l = join(s_l) - \{t\} \cup var(src_1) \cup var(src_2)\)</span></li>
+<li>case <span class="arithmatex">\(l: \overline{\phi}\ r \leftarrow src\)</span>, <span class="arithmatex">\(s_l = join(s_l) \cup var(src)\)</span></li>
+<li>case <span class="arithmatex">\(l: \overline{\phi}\ r \leftarrow src_1\ op\ src_2\)</span>, <span class="arithmatex">\(s_l = join(s_l) \cup var(src_1) \cup var(src_2)\)</span></li>
+<li>case <span class="arithmatex">\(l: \overline{\phi}\ ifn\ t\ goto\ l'\)</span>, <span class="arithmatex">\(s_l = join(s_l) \cup \{ t \}\)</span></li>
+<li>other cases: <span class="arithmatex">\(s_l = join(s_l)\)</span></li>
+</ul>
+<p>Now the interference graph of the <code>PA_SSA2</code> is as follows</p>
+<div class="mermaid">graph TD;
+    a1 --- b1 --- c1 --- d1
+    a2 --- e1 --- d2
+</div>
+<p>which is chordal.</p>
+<h4 id="coloring-interference-graph-generated-from-ssa">Coloring Interference Graph generated from SSA</h4>
+<p>According to the findings of Budimlic's work and Hack's work, coloring the interference graph generated from an SSA program in in-order traversal of dominator tree gives us the optimal coloring. </p>
+<blockquote>
+<p>In Hack's paper, it was discussed that the <em>elimination</em> step should be done in the post-order traveral of the dominator tree. From graph coloring problem, we know that the order of coloring is the reverse of the vertex eliminiation order.</p>
+</blockquote>
+<p>In the context of PA, the in-order traversal of the dominator tree is always the same order of the instructions being labeled (assuming we generate the PA using the maximal munch algorithm introduced in the earlier lesson.)</p>
+<p>Therefore we can color the above graph as follows,</p>
+<div class="mermaid">graph TD;
+    a1("a1(r0)") --- b1("b1(r1)") --- c1("c1(r0)") --- d1("d1(r1)")
+    a2("a2(r0)") --- e1("e1(r1)") --- d2("d2(r0)")
+</div>
+<p>From now onwards until the next section (JVM Bytecode generatoin), we assume that program to be register-allocated must be in SSA form.</p>
+<p>Given that the program interference graph is chordal, the register allocation can be computed in polymomial type.</p>
+<p>Instead of using building the interference graph, we consider using the live range table of an SSA program, </p>
+<p>In the following table (of <code>PA_SSA2</code>), the first row contains the program labels and the first column defines the variables and the last column is the allocated register. An <code>*</code> in a cell <code>(x, l)</code> represent variable <code>x</code> is live at program location <code>l</code>.</p>
+<table>
+<thead>
+<tr>
+<th>var</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+<th>9</th>
+<th>reg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a1</td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>b1</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>c1</td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>d1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>a2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>e1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>d2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td>r0</td>
+</tr>
+</tbody>
+</table>
+<p>At any point, (any column), the number of <code>*</code> denotes the number of live variables concurrently. The above tables show that at any point in-time, the peak of the register usage is <code>2</code> (in some literature, it is also known as the chromatic of the interference graph). Therefore, minimumally we need 2 registers to allocate the above program without spilling.</p>
+<h4 id="register-spilling">Register Spilling</h4>
+<p>However register spilling is avoidable due to program complexity and limit of hardware. </p>
+<p>Let's consider another example </p>
+<pre><code class="language-java">// PA3
+1: x &lt;- 1       // {}
+2: y &lt;- x + 1   // {x}
+3: z &lt;- x * x   // {x,y}
+4: w &lt;- y * x   // {x,y,z}
+5: u &lt;- z + w   // {z,w}
+6: r_ret &lt;- u   // {u}  
+7: ret          // {}
+</code></pre>
+<p>The SSA form is identical to the above, since there is no variable re-assignment.
+In the comment, we include the result of the liveness analysis.</p>
+<table>
+<thead>
+<tr>
+<th>var</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>reg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x</td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>y</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>z</td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>w</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>u</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>From the live range table able, we find that at peak i.e. instruction <code>4</code>, there are 3 live variables currently. We would need three registers for the allocation.</p>
+<p>What if we only have two registers? Clearly, we need to "sacrifice" some live variable at instruction <code>4</code>, by spilling it back to the temporary variable
+and reloading before it is needed again. But which one shall we "sacrifice"? There are a few options here.</p>
+<ol>
+<li>Spill the least urgently needed live variable. Recall that the liveness analysis is a may analaysis, its result is an over-approximation. Some live variables might not be needed at this point.</li>
+<li>Spill the live variable that interfere the most. This option works for the bruteforce searching coloring algorithm, the idea was to reduce the level of interference so that the remaining graph without this variable can be colored. </li>
+</ol>
+<p>For now let's take the first option. Suppose we extend the liveness analysis to keep track of the label where a variable is marked live.</p>
+<pre><code class="language-java">// PA3
+1: x &lt;- 1       // {}
+2: y &lt;- x + 1   // {x(3)}
+3: z &lt;- x * x   // {x(3),y(4)}
+4: w &lt;- y * x   // {x(4),y(4),z(5)}
+5: u &lt;- z + w   // {z(5),w(5)}
+6: r_ret &lt;- u   // {u(6)}  
+7: ret          // {}
+</code></pre>
+<p>From the above results, we can conclude that at instruction <code>4</code>, we should sacrifice the live variable <code>z</code>, because <code>z</code> is marked live at label <code>5</code> which is needed in the instruction one-hop away in the CFG, compared to <code>x</code> and <code>y</code> which are marked live at label <code>4</code>. In other words, <code>z</code> is not as urgently needed compared to <code>x</code> and <code>y</code>. </p>
+<table>
+<thead>
+<tr>
+<th>var</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>reg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x</td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>y</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>z</td>
+<td></td>
+<td></td>
+<td></td>
+<td>-</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>w</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>u</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>From the above, we find that the graph is colorable again. However register spilling requires some extra steps. First at label <code>3</code>, variable is <code>z</code> is some register, either <code>r0</code> or <code>r1</code>,
+assuming in the target code operation <code>*</code> can use the same register for both operands and the result. We encounter another problem. To spill <code>z</code> (from the register) to the temporary variable, we need to figure out which other live variable to be swapped out so that the spilling can be done. Let's illustrate using the same example. </p>
+<pre><code class="language-java">// PA3_REG
+1: r0 &lt;- 1        // x is r0
+2: r1 &lt;- r0 + 1   // y is r1
+3: ?? &lt;- r0 * r0  // what register should hold the result of x * x, before spilling it to `z`?
+</code></pre>
+<p>where the comments indicate what happens after the label instruction is excuted.</p>
+<p>There are two option here</p>
+<ol>
+<li><code>??</code> is <code>r1</code>. It implies that we need to spill <code>r1</code> to <code>y</code> first after instruction <code>2</code> and then spill <code>r1</code> to <code>z</code> after instruction <code>3</code>, and load <code>y</code> back to <code>r1</code> after instruction <code>3</code> before instruction <code>4.</code></li>
+<li><code>??</code> is <code>r0</code>. It implies that we need to spill <code>r0</code> to <code>z</code> first after instruction <code>2</code> and then spill <code>r0</code> to <code>z</code> after instruction <code>3</code>, and load <code>x</code> back to <code>r0</code> after instruction <code>3</code> before instruction <code>4.</code></li>
+</ol>
+<p>In this particular example, both options are equally good (or equally bad). In general, we can apply the heuristic of choosing the conflicting variable whose live range ends earlier, hopefully the main subject of spilling (<code>z</code> in this example) is not needed until then. </p>
+<p>Now let's say we pick the first option, the register allocation continues </p>
+<table>
+<thead>
+<tr>
+<th>var</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>reg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>x</td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>y</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>z</td>
+<td></td>
+<td></td>
+<td></td>
+<td>-</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>w</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>u</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td>r1</td>
+</tr>
+</tbody>
+</table>
+<p>where <code>-</code> indicates taht <code>z</code> is being spilled from <code>r1</code> before label <code>4</code> and it needs to be loaded back to <code>r1</code> before label <code>5</code>. 
+And the complete code of <code>PA3_REG</code> is as follows</p>
+<pre><code class="language-java">// PA3_REG
+1: r0 &lt;- 1        // x is r0
+2: r1 &lt;- r0 + 1   // y is r1
+   y  &lt;- r1       // temporarily save y
+3: r1 &lt;- r0 * r0  // z is r1 
+   z  &lt;- r1       // spill to z
+   r1 &lt;- y        // y is r1
+4: r0 &lt;- r1 * r0  // w is r0 (x,y are dead afterwards)
+   r1 &lt;- z        // z is r1
+5: r1 &lt;- r1 + r0  // u is r1 (z,w are dead afterwards)
+6: r_ret &lt;- r1
+7: ret
+</code></pre>
+<p>In the above, assume that in the target platform, a label can be associated with a sequence of instructions, (which is often the case).</p>
+<blockquote>
+<p>As an exercise, work out what if we save <code>x</code> temporarily instead of <code>y</code> at label <code>2</code>.</p>
+</blockquote>
+<h4 id="register-allocation-for-phi-assignments">Register allocation for phi assignments</h4>
+<p>What remains to address is the treatment of the phi assignments.</p>
+<p>Let's consider a slightly bigger example. </p>
+<pre><code class="language-js">// PA4
+1: x &lt;- input   // {input}
+2: s &lt;- 0       // {x}
+3: c &lt;- 0       // {s,x}
+4: b &lt;- c &lt; x   // {c,s,x}
+5: ifn b goto 9 // {b,c,s,x}
+6: s &lt;- c + s   // {c,s,x}
+7: c &lt;- c + 1   // {c,s,x}
+8: goto 4       // {c,s,x}
+9: r_ret &lt;- s   // {s}
+10: ret         // {}
+</code></pre>
+<p>In the above we find a sum program with liveness analysis results included as comments.</p>
+<p>Let's convert it into SSA.</p>
+<pre><code class="language-js">// PA_SSA4
+1: x1 &lt;- input1  // {input1(1)}
+2: s1 &lt;- 0       // {x1(4)}
+3: c1 &lt;- 0       // {s1(4),x1(4)}
+4: c2 &lt;- phi(3:c1, 8:c3)
+   s2 &lt;- phi(3:s1, 8:s3)
+   b1 &lt;- c2 &lt; x1 // {c2(4),s2(6,9),x1(4)}
+5: ifn b1 goto 9 // {b1(5),c2(6),s2(6,9),x1(4)}
+6: s3 &lt;- c2 + s2 // {c2(6),s2(6),x1(4)}
+7: c3 &lt;- c2 + 1  // {c2(7),s3(4),x1(4)}
+8: goto 4        // {c3(4),s3(4),x1(4)}
+9: r_ret &lt;- s2   // {s2(9)}
+10: ret          // {}
+</code></pre>
+<p>We put the liveness analysis results as comments. </p>
+<p>There are a few options of handling phi assignments.</p>
+<ol>
+<li>Treat them like normal assignment, i.e. translate them back to move instruction (refer to "SSA back to Pseudo Assembly" in the name analysis lesson.) This is the most conservative approach definitely work, but not necessary giving us optimized code</li>
+<li>Ensure the variables in the phi assignments sharing the same registers. </li>
+</ol>
+<p>Let's consider the first approach </p>
+<h5 id="conservative-approach">Conservative approach</h5>
+<p>When we translate the SSA back to PA</p>
+<pre><code class="language-js">// PA_SSA_PA4
+1: x1 &lt;- input1  // {input1(1)}
+2: s1 &lt;- 0       // {x1(4)}
+3: c1 &lt;- 0       // {s1(3.1),x1(4)}
+3.1: c2 &lt;- c1     
+     s2 &lt;- s1    // {s1(3.1),x1(4),c1(3.1)}
+4: b1 &lt;- c2 &lt; x1 // {c2(4),s2(6,9),x1(4)}
+5: ifn b1 goto 9 // {b1(5),c2(6),s2(6,9),x1(4)}
+6: s3 &lt;- c2 + s2 // {c2(6),s2(6),x1(4)}
+7: c3 &lt;- c2 + 1  // {c2(7),s3(7.1),x1(4)}
+7.1: c2 &lt;- c3
+     s2 &lt;- s3    // {s3(7.1),x1(4),c3(7.1)}
+8: goto 4        // {c2(4),s2(6,9),x1(4)}
+9: r_ret &lt;- s2   // {s2(9)}
+10: ret          // {}
+</code></pre>
+<p>It is clear that the program is allocatable without spilling with 4 registers. Let's challenge ourselves with just 3 registers.</p>
+<table>
+<thead>
+<tr>
+<th>var</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>3.1</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>7.1</th>
+<th>8</th>
+<th>9</th>
+<th>10</th>
+<th>reg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>input1</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>x1</td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>s1</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c1</td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>s2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>b1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>s3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+</tbody>
+</table>
+<p>At the peak of the live variables, i.e. instruction <code>5</code>, we realize that <code>x1</code> is live but not urgently needed until <code>4</code> which is 5-hop away from the current location. Hence we spill it from register <code>r1</code> to the temporary variable to free up <code>r1</code>.  Registers are allocated by the next available in round-robin manner.</p>
+<pre><code class="language-js">// PA4_REG1
+1: r0 &lt;- input1  // input is r0
+   r1 &lt;- r0      // x1 is r1
+2: r2 &lt;- 0       // s1 is r2
+3: r0 &lt;- 0       // c1 is r0
+                 // c2 is r0 
+                 // s2 is r2
+                 // no need to load r1 from x1
+                 // b/c x1 is still active in r1
+                 // from 3 to 4
+4: x1 &lt;- r1      // spill r1 to x1
+   r1 &lt;- r0 &lt; r1 // b1 is r1
+5: ifn r1 goto 9 // 
+6: r2 &lt;- r0 + r2 // s3 is r2
+7: r0 &lt;- r0 + 1  // c3 is r0
+                 // c2 is r0
+                 // s2 is r2
+8: r1 &lt;- x1      // restore r1 from x1
+   goto 4        // b/c x1 is inactive but needed in 4
+9: r_ret &lt;- r2   // 
+10: ret          // 
+</code></pre>
+<p>What if at instruction <code>7</code>, we allocate <code>r1</code> to <code>s3</code> instead of <code>r2</code>? Thanks to some indeterminism, we could have a slightly different register allocation as follows</p>
+<table>
+<thead>
+<tr>
+<th>var</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>3.1</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>7.1</th>
+<th>8</th>
+<th>9</th>
+<th>10</th>
+<th>reg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>input1</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>x1</td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>s1</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c1</td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>s2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>b1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>s3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>r1</strong></td>
+</tr>
+<tr>
+<td>c3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>r2</strong></td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-js">// PA4_REG2
+1: r0 &lt;- input1  // input is r0
+   r1 &lt;- r0      // x1 is r1
+2: r2 &lt;- 0       // s1 is r2
+3: r0 &lt;- 0       // c1 is r0
+                 // c2 is r0 
+                 // s2 is r2
+                 // no need to load r1 from x1
+                 // b/c x1 is still active in r1
+                 // from 3 to 4
+4: x1 &lt;- r1      // spill r1 to x1
+   r1 &lt;- r0 &lt; r1 // b1 is r1
+5: ifn r1 goto 9 // 
+6: r1 &lt;- r0 + r2 // s3 is r1
+7: r2 &lt;- r0 + 1  // c3 is r2
+7.1: r0 &lt;- r2    // c2 is r0  
+     r2 &lt;- r1    // s2 is r2
+8: r1 &lt;- x1      // restore r1 from x1 
+   goto 4        // b/c x1 is inactive but needed in 4
+9: r_ret &lt;- s2   
+10: ret          
+</code></pre>
+<p>In this case we have to introduce some additional register shuffling at <code>7.1</code>. Compared to <code>PA4_REG1</code>, this result is less efficient.</p>
+<h5 id="register-coalesced-approach-ensure-the-variables-in-the-phi-assignments-sharing-the-same-registers">Register coalesced approach - Ensure the variables in the phi assignments sharing the same registers</h5>
+<p>Note that we should not enforce the variable on the LHS of a phi assignment to share the same register as the operands on the RHS.
+Otherwise, we could lose the chordal graph property of SSA. </p>
+<p>What we could construct the live range table as follow.</p>
+<table>
+<thead>
+<tr>
+<th>var</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+<th>9</th>
+<th>10</th>
+<th>reg</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>input1</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>x1</td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>s1</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>s2</td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c2</td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+<tr>
+<td>b1</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>r1</td>
+</tr>
+<tr>
+<td>s3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>r2</td>
+</tr>
+<tr>
+<td>c3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>*</td>
+<td></td>
+<td></td>
+<td>r0</td>
+</tr>
+</tbody>
+</table>
+<p>Although from the above we find <code>c1</code> seems to be always dead, but it is not, because its value is merged into c2 in label <code>4</code>. This is because in our SSA language, the phi assignment is not an instruction alone while liveness analysis is performed on per instruction level.</p>
+<p>We also take note we want to <code>c1</code> and <code>c3</code> to share the same register, and <code>s1</code> and <code>s3</code>to share the same register. Hence we can allocate the 3 registers according to the above plan. In this case, we have the same result as the first attempt in the conservative approach <code>PA4_REG1</code>.</p>
+<p>Note that this approach is not guanranteed to produce more efficient results than the conversvative approach. </p>
+<h4 id="summary-so-far">Summary so far</h4>
+<p>To sum up the code generation process from PA to 3-address target could be carried out as follows,</p>
+<ol>
+<li>Convert the PA program into a SSA.</li>
+<li>Perform Liveness Analysis on the SSA. </li>
+<li>Generate the live range table based on the liveness analysis results.</li>
+<li>Allocate registers based on the live range table. Detect potential spilling.</li>
+<li>Depending on the last approach, either<ol>
+<li>convert SSA back to PA and generate the target code according to the live range table, or </li>
+<li>generate the target code from SSA with register coalesced for the phi assignment operands.</li>
+</ol>
+</li>
+</ol>
+<h4 id="further-reading-for-ssa-based-register-allocation">Further Reading for SSA-based Register Allocation</h4>
+<ul>
+<li>https://compilers.cs.uni-saarland.de/papers/ssara.pdf</li>
+<li>https://dl.acm.org/doi/10.1145/512529.512534</li>
+</ul>
+<h2 id="jvm-bytecode-reduced-set">JVM bytecode (reduced set)</h2>
+<p>In this section, we consider the generated JVM codes from PA. </p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+(\tt JVM\ Instructions) &amp; jis &amp; ::= &amp; [] \mid ji\ jis\\ 
+(\tt JVM\ Instruction) &amp; ji &amp; ::= &amp; ilabel~l \mid iload~n \mid istore~n \mid iadd \mid isub \mid imul \\ 
+&amp; &amp; &amp; \mid if\_icmpge~l \mid if\_icmpne~l \mid igoto~l \mid  sipush~c \mid ireturn\\
+(\tt JVM\ local\ vars) &amp; n &amp; ::= &amp; 1 \mid 2 \mid ... \\ 
+(\tt constant) &amp; c &amp; ::= &amp; -32768 \mid ... \mid 0 \mid ... \mid 32767 
+\end{array}
+\]</div>
+<p>As mentioned, JVM has 3 registers</p>
+<ol>
+<li>a register for the first operand and result</li>
+<li>a register for the second operand</li>
+<li>a register for controlling the state of the stack operation (we can't used.)</li>
+</ol>
+<p>Technically speaking we only have 2 registers.</p>
+<p>An Example of JVM byte codes is illustrated as follows</p>
+<p>Supposed we have a PA program as follows,</p>
+<pre><code class="language-js">1: x &lt;- input
+2: s &lt;- 0
+3: c &lt;- 0
+4: b &lt;- c &lt; x
+5: ifn b goto 9
+6: s &lt;- c + s
+7: c &lt;- c + 1
+8: goto 4
+9: _ret_r &lt;- s
+10: ret
+</code></pre>
+<p>For ease of reasoning, we assume that we map PA temporary variables to numerical JVM variables, as <code>input</code> to <code>1</code>, <code>x</code> to <code>2</code>, <code>s</code> to <code>3</code>, <code>c</code> to <code>4</code> (and <code>b</code> to <code>5</code>, though <code>b</code> is not needed in the JVM instruction). We also map the PA label (the useful ones) to JVM label. <code>4</code> to <code>l1</code> and <code>9</code> to <code>l2</code>.</p>
+<pre><code class="language-js">iload 1      // push the content of input to register 0
+istore 2     // pop register 0's content to x,  
+sipush 0     // push the value 0 to register 0
+istore 3     // pop register 0 to s
+sipush 0     // push the value 0 to register 0
+istore 4     // pop register 0 to c
+ilabel l1    // mark label l1
+iload 4      // push the content of c to register 0
+iload 2      // push the content of x to register 1
+if_icmpge l2 // if register 0 &gt;= register 1 jump, 
+             // regardless of the comparison pop both registers
+iload 4      // push the content of c to register 0
+iload 3      // push the content of s to register 1
+iadd         // sum up the r0 and r1 and result remains in register 0
+istore 3     // pop register 0 to s
+iload 4      // push the content of c to register 0
+sipush 1     // push a constant 1 to register 1
+iadd        
+istore 4     // pop register 0 to c
+igoto l1
+ilabel l2
+iload 3      // push the content of s to register 0
+ireturn
+</code></pre>
+<h2 id="jvm-bytecode-operational-semantics">JVM bytecode operational semantics</h2>
+<p>To describe the operational semantics of JVM bytecodes, we define the following meta symbols.</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+(\tt JVM\ Program) &amp; J &amp; \subseteq &amp; jis \\
+(\tt JVM\ Environment) &amp; \Delta &amp; \subseteq &amp; n \times c \\ 
+(\tt JVM\ Stack) &amp; S &amp; =  &amp; \_,\_ \mid c,\_ \mid c,c  
+\end{array}
+\]</div>
+<p>An JVM program is a sequence of JVM instructions. <span class="arithmatex">\(\Delta\)</span> is local environment maps JVM variables to constants. <span class="arithmatex">\(S\)</span> is a 2 slots stack where the left slot is the bottom (<span class="arithmatex">\(r_0\)</span>) and the right slot is the top (<span class="arithmatex">\(r_1\)</span>). <span class="arithmatex">\(\_\)</span> denotes that a slot is vacant.</p>
+<p>We can decribe the operational semantics of JVM byte codes using the follow rule form</p>
+<div class="arithmatex">\[ 
+J \vdash (\Delta, S, jis) \longrightarrow (\Delta', S', jis')
+\]</div>
+<p><span class="arithmatex">\(J\)</span> is the entire program, it is required when we process jumps and conditional jump, the rule rewrites a configuration <span class="arithmatex">\((L\Delta, S, jis)\)</span> to the next configuration <span class="arithmatex">\((\Delta', S', jis')\)</span>, where <span class="arithmatex">\(\Delta\)</span> and <span class="arithmatex">\(\Delta'\)</span> are the local environments, <span class="arithmatex">\(S\)</span> and <span class="arithmatex">\(S'\)</span> are the stacks, <span class="arithmatex">\(jis\)</span> and <span class="arithmatex">\(jis'\)</span> are the currrent and next set of instructions to be processed. </p>
+<p>$$
+\begin{array}{rc}
+(\tt sjLoad1) &amp; J \vdash (\Delta, _, _, iload\ n;jis) \longrightarrow (\Delta, \Delta(n), _, jis) \ \ 
+(\tt sjLoad2) &amp; J \vdash (\Delta, c, _, iload\ n;jis) \longrightarrow (\Delta, c, \Delta(n), jis) \ \ 
+(\tt sjPush1) &amp; J \vdash (\Delta, _, _, sipush\ c;jis) \longrightarrow (\Delta, c, _, jis) \ \ 
+(\tt sjPush2) &amp; J \vdash (\Delta, c_0, _, sipush\ c_2;jis) \longrightarrow (\Delta, c_0, c_1, jis)
+\end{array}
+$$
+The rules <span class="arithmatex">\((\tt sjLoad1)\)</span> and  <span class="arithmatex">\((\tt sjLoad2)\)</span> handles the loading variable's content to the stack registers. 
+The rules <span class="arithmatex">\((\tt sjPush1)\)</span> and  <span class="arithmatex">\((\tt sjPush2)\)</span> handles the loading constant to the stack registers. </p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+(\tt sjLabel) &amp; J \vdash (\Delta, r_0, r_1, ilabel\ l;jis) \longrightarrow (\Delta, r_0, r_1, jis) \\ \\ 
+\end{array}
+\]</div>
+<p>The rule <span class="arithmatex">\((\tt sjLabel)\)</span> processes the <span class="arithmatex">\(ilabel\ l\)</span> instruction. It is being skipped, because it serves as a syntactical marking (refer to the <span class="arithmatex">\(codeAfterLabel()\)</span> function below), has no impact to the semantic operation.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+(\tt sjStore) &amp; J \vdash (\Delta, c, \_, istore\ n;jis) \longrightarrow (\Delta \oplus(n,c), \_, \_, jis) \\ \\ 
+\end{array}
+\]</div>
+<p>The rule <span class="arithmatex">\((\tt sjStore)\)</span> processes the <span class="arithmatex">\(istore\ n\)</span> instruction by popping the register <span class="arithmatex">\(r_0\)</span> from the stack and store its content with variable <span class="arithmatex">\(n\)</span> in <span class="arithmatex">\(\Delta\)</span>.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+(\tt sjAdd) &amp; J \vdash (\Delta, c_0, c_1, iadd;jis) \longrightarrow (\Delta, c_0+c_1, \_, jis) \\ \\ 
+(\tt sjSub) &amp; J \vdash (\Delta, c_0, c_1, isub;jis) \longrightarrow (\Delta, c_0-c_1, \_, jis) \\ \\ 
+(\tt sjMul) &amp; J \vdash (\Delta, c_0, c_1, imul;jis) \longrightarrow (\Delta, c_0*c_1, \_, jis)  
+\end{array}
+\]</div>
+<p>The rules <span class="arithmatex">\((\tt sjAdd)\)</span>, <span class="arithmatex">\((\tt sjSub)\)</span> and <span class="arithmatex">\((\tt sjMul)\)</span> process the binary operation assuming both registers in the stack holding some constants. The result of the computation is held by <span class="arithmatex">\(r_0\)</span> while <span class="arithmatex">\(r_1\)</span> becomes empty.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+(\tt sjGoto) &amp; J \vdash (\Delta, r_0, r_1, igoto\ l';jis) \longrightarrow (\Delta, r_0, r_1, codeAfterLabel(J, l')) \\ \\ 
+(\tt sjCmpNE1) &amp; \begin{array}{c} 
+                c_0 \neq c_1 \ \ \ \ jis' = codeAfterLabel(J, l')
+                \\ \hline
+                J \vdash  (\Delta, c_0, c_1, if\_icmpne\ l';jis) \longrightarrow (\Delta, \_, \_, jis') 
+                \end{array} \\ \\
+(\tt sjCmpNE2) &amp; \begin{array}{c} 
+                c_0 = c_1 
+                \\ \hline
+                J \vdash  (\Delta, c_0, c_1, if\_icmpne\ l';jis) \longrightarrow (\Delta , \_, \_, jis) 
+                \end{array} \\ \\ 
+(\tt sjCmpGE1) &amp; \begin{array}{c} 
+                c_0 \ge c_1 \ \ \ \ jis' = codeAfterLabel(J, l')
+                \\ \hline
+                J \vdash  (\Delta, c_0, c_1, if\_icmpge\ l';jis) \longrightarrow (\Delta, \_, \_, jis') 
+                \end{array} \\ \\
+(\tt sjCmpGE2) &amp; \begin{array}{c} 
+                c_0 \lt c_1 
+                \\ \hline
+                J \vdash  (\Delta, c_0, c_1, if\_icmpge\ l';jis) \longrightarrow (\Delta , \_, \_, jis) 
+                \end{array} \\ \\ 
+\end{array}
+\]</div>
+<p>The last set of rules handle the jump and conditional jumps. The rule <span class="arithmatex">\((\tt sjGoto)\)</span> processes a goto instruction by replacing the instructions to be processed <span class="arithmatex">\(jis\)</span> by <span class="arithmatex">\(codeAfterLabel(J, l')\)</span>. Recall that <span class="arithmatex">\(J\)</span> is storing the entire sequence of JVM instructions, <span class="arithmatex">\(codeAfterLabel(J, l')\)</span> extracts the suffix of <span class="arithmatex">\(J\)</span> starting from the point where <span class="arithmatex">\(ilabel\ l'\)</span> is found. </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+codeAfterLabel(ireturn, l) &amp; = &amp; error \\ 
+codeAfterLabel(ilabel\ l;jis, l') &amp; = &amp; 
+            \left \{ \begin{array}{lc}
+                      jis &amp; l == l'  \\
+                      codeAfterLabel(jis, l') &amp; {\tt otherwise}
+                     \end{array}
+            \right . \\ 
+codeAfterLabel(ji; jis, l) &amp; = &amp; codeAfterLabel(jis, l)
+\end{array}
+\]</div>
+<p>The rule <span class="arithmatex">\((\tt sjCmpNE1)\)</span> performs the jump when the values held by the stacks are not equal.
+The rule <span class="arithmatex">\((\tt sjCmpNE2)\)</span> moves onto the next instruction (skpping the jump) when the values held by the stacks are equal.
+The rule <span class="arithmatex">\((\tt sjCmpGE1)\)</span> performs the jump when the values in the stack <span class="arithmatex">\(c_0 \geq c_1\)</span>.
+The rule <span class="arithmatex">\((\tt sjCmpGE2)\)</span> moves onto the next instruction (skpping the jump) when the <span class="arithmatex">\(c_0 \lt c_1\)</span>.</p>
+<h2 id="conversion-from-pa-to-jvm-bytecodes">Conversion from PA to JVM bytecodes</h2>
+<p>A simple conversion from PA to JVM bytecodes can be described using the following deduction system.</p>
+<p>Let <span class="arithmatex">\(M\)</span> be a mapping from PA temporary variables to JVM local variables.
+Let <span class="arithmatex">\(L\)</span> be a mapping from PA labels (which are used as the targets in some jump instructions) to JVM labels.</p>
+<p>We have three types of rules.</p>
+<ul>
+<li><span class="arithmatex">\(M, L \vdash lis \Rightarrow jis\)</span>, convert a sequence of PA labeled isntructions to a sequence of JVM bytecode instructions.</li>
+<li><span class="arithmatex">\(M \vdash s \Rightarrow jis\)</span>, convert a PA operand into a sequence of JVM bytecode instructions.</li>
+<li><span class="arithmatex">\(L \vdash l \Rightarrow jis\)</span>, convert a PA label into a JVM bytecode instructions, usually it is either empty or singleton.</li>
+</ul>
+<h3 id="converting-pa-labeled-instructions">Converting PA labeled instructions</h3>
+<p>$$
+\begin{array}{rl}
+     {\tt (jMove)} &amp; \begin{array}{c}
+                    L \vdash l \Rightarrow jis_0 \ \ \ M \vdash s \Rightarrow jis_1 \ \ \ M,L\vdash lis \Rightarrow jis_2 \
+                    \hline
+                    M, L \vdash l:t \leftarrow s; lis \Rightarrow jis_0 + jis_1 + [istore\ M(t)] + jis_2
+                \end{array} \<br/>
+\end{array}
+$$
+The rule <span class="arithmatex">\({\tt (jMove)}\)</span> handles the case of a move instruction. In this case we make use of the auxiliary rule <span class="arithmatex">\(L \vdash l_1 \Rightarrow jis_0\)</span> to generate the label, in case the label is used as the target in some jump instructions. The auxiliary rule <span class="arithmatex">\(M \vdash s \Rightarrow jis_1\)</span> converts a PA operand into a loading instruction in JVM bytecodes. Details fo these auxiliary functions can be found in the next subsection.</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (jEq)} &amp; \begin{array}{c}
+                    L \vdash l_1 \Rightarrow jis_0 \ \ \ M \vdash s_1 \Rightarrow jis_1 \ \ \ M \vdash s_2 \Rightarrow jis_2 \ \ \ M,L \vdash lis \Rightarrow jis_3 \\
+                    \hline
+                    M, L \vdash l_1:t \leftarrow s_1 == s_2; l_2:ifn\ t\ goto\ l_3 ; lis \Rightarrow jis_0 + jis_1 + jis_2 + [if\_icmpne\ L(l_3)] + jis_3
+                \end{array} \\  \\
+     {\tt (jLThan)} &amp; \begin{array}{c}
+                    L \vdash l_1 \Rightarrow jis_0 \ \ \ M \vdash s_1 \Rightarrow jis_1 \ \ \ M \vdash s_2 \Rightarrow jis_2 \ \ \ M,L \vdash lis \Rightarrow jis_3 \\
+                    \hline
+                    M, L \vdash l_1:t \leftarrow s_1 &lt; s_2; l_2:ifn\ t\ goto\ l_3 ; lis \Rightarrow jis_0 + jis_1 + jis_2 + [if\_icmpge\ L(l_3)] + jis_3
+                \end{array} \\  
+\end{array}
+\]</div>
+<p>The rules <span class="arithmatex">\((\tt jEq)\)</span> and <span class="arithmatex">\((\tt jLThan)\)</span> translate the conditional jump instruction from PA to JVM. In these cases, we have to look at the first two instructions in the sequence. This is because in PA the conditional jump is performed in 2 instructions; while in JVM, it is done in a single step with two different instructions.</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (jAdd)} &amp; \begin{array}{c}
+                    L \vdash l \Rightarrow jis_0 \ \ \ M \vdash s_1 \Rightarrow jis_1 \ \ \ M \vdash s_2 \Rightarrow jis_2 \ \ \ M,L \vdash lis \Rightarrow jis_3 \\
+                    \hline
+                    M, L \vdash l:t \leftarrow s_1 + s_2; lis \Rightarrow jis_0 + jis_1 + jis_2 + [iadd, istore\ M(t)] + jis_3
+                \end{array} \\  
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (jSub)} &amp; \begin{array}{c}
+                    L \vdash l \Rightarrow jis_0 \ \ \ M \vdash s_1 \Rightarrow jis_1 \ \ \ M \vdash s_2 \Rightarrow jis_2 \ \ \ M,L \vdash lis \Rightarrow jis_3 \\
+                    \hline
+                    M, L \vdash l:t \leftarrow s_1 - s_2; lis \Rightarrow jis_0 + jis_1 + jis_2 + [isub, istore\ M(t)] + jis_3
+                \end{array} \\  
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (jMul)} &amp; \begin{array}{c}
+                    L \vdash l \Rightarrow jis_0 \ \ \ M \vdash s_1 \Rightarrow jis_1 \ \ \ M \vdash s_2 \Rightarrow jis_2 \ \ \ M,L \vdash lis \Rightarrow jis_3 \\
+                    \hline
+                    M, L \vdash l:t \leftarrow s_1 * s_2; lis \Rightarrow jis_0 + jis_1 + jis_2 + [imul, istore\ M(t)] + jis_3
+                \end{array} \\  
+\end{array}
+\]</div>
+<p>The rules <span class="arithmatex">\((\tt jAdd)\)</span>,  <span class="arithmatex">\((\tt jSub)\)</span> and  <span class="arithmatex">\((\tt jMul)\)</span> handle the binary operation instruction in PA to JVM.</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (jGoto)} &amp; \begin{array}{c}
+                    L \vdash l_1 \Rightarrow jis_0\ \ \  M,L \vdash lis \Rightarrow jis_1 \\
+                    \hline
+                    M, L \vdash l_1:goto\ l_2; lis \Rightarrow jis_0 + [igoto\ l_2] + jis_1
+                \end{array} \\  
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (jReturn)} &amp; \begin{array}{c}
+                    L \vdash l_1 \Rightarrow jis_0\ \ \ M \vdash s \Rightarrow jis_1\ \ \ \\
+                    \hline
+                    M, L \vdash l_1:rret \leftarrow s;  l_2: ret \Rightarrow jis_0 + jis_1 + [ireturn] 
+                \end{array} \\  
+\end{array}
+\]</div>
+<p>The last two rules <span class="arithmatex">\((\tt jGoto)\)</span> and <span class="arithmatex">\((\tt jReturn)\)</span> are trivial.</p>
+<h3 id="converting-pa-operands">Converting PA Operands</h3>
+<div class="arithmatex">\[
+\begin{array}{rl}
+{\tt (jConst)} &amp; M \vdash c \Rightarrow [sipush\ c] \\ \\ 
+{\tt (jVar)} &amp; M \vdash t \Rightarrow [iload\ M(t)] \\ \\ 
+\end{array}
+\]</div>
+<h3 id="converting-pa-labels">Converting PA Labels</h3>
+<div class="arithmatex">\[
+\begin{array}{rl}
+{\tt (jLabel1)} &amp; \begin{array}{c} 
+                    l \not \in L
+                    \\ \hline
+                    L \vdash l \Rightarrow [] 
+                   \end{array} \\ \\ 
+{\tt (jLabel2)} &amp; \begin{array}{c} 
+                    l  \in L
+                    \\ \hline
+                    L \vdash l \Rightarrow [ilabel\ l] 
+                   \end{array}  
+\end{array}
+\]</div>
+<h2 id="optimizing-jvm-bytecode">Optimizing JVM bytecode</h2>
+<p>Though it is limited, there is room to opimize the JVM bytecode. For example, </p>
+<p>From the following SIMP program </p>
+<pre><code class="language-js">r = (1 + 2) * 3
+</code></pre>
+<p>we generate the following PA code via the Maximal Munch</p>
+<pre><code class="language-js">1: t &lt;- 1 + 2
+2: r &lt;- t * 3  
+</code></pre>
+<p>In turn if we apply the above PA to JVM bytecode conversion</p>
+<pre><code class="language-js">sipush 1
+sipush 2
+iadd
+istore 2 // 2 is t
+iload 2
+sipush 3
+imul
+istore 3 // 3 is r
+</code></pre>
+<p>As observe, the <code>istore 2</code> followed by <code>iload 2</code> are rundandant, because <code>t</code> is not needed later (dead).</p>
+<pre><code class="language-js">sipush 1
+sipush 2
+iadd
+sipush 3
+imul
+istore 3 // 3 is r
+</code></pre>
+<p>This can either be done via </p>
+<ol>
+<li>Liveness analysis on PA level or </li>
+<li>Generate JVM byte code directly from SIMP.<ul>
+<li>This requires the expression of SIMP assignment to be left nested. </li>
+<li>The conversion is beyond the scope of this module.</li>
+</ul>
+</li>
+</ol>
+<h4 id="further-reading-for-jvm-bytecode-generation">Further Reading for JVM bytecode generation</h4>
+<ul>
+<li>https://ssw.jku.at/Research/Papers/Wimmer04Master/Wimmer04Master.pdf</li>
+</ul>
+<h3 id="summary-for-jvm-bytecode-generation">Summary for JVM bytecode generation</h3>
+<ul>
+<li>To generate JVM bytecode w/o optimization can be done via deduction system</li>
+<li>To optimize JVM bytecode, we could apply liveness analysis to eliminate redundant store-then-load sequence.</li>
+</ul></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/jquery-3.6.0.min.js"></script>
+<script src="../../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

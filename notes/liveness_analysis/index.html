@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Liveness Analysis - Compiler Design and Program Analysis 50.054</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="../..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-liveness-analysis">50.054 - Liveness Analysis</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcomes">Learning Outcomes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#recall">Recall</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#liveness-analysis">Liveness Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#defining-the-lattice-for-livenesss-analysis">Defining the Lattice for Livenesss Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#defining-the-monotone-constraint-for-liveness-analysis">Defining the Monotone Constraint for Liveness Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#forward-vs-backward-analysis">Forward vs Backward Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#may-analysis-vs-must-analysis">May Analysis vs Must Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-liveness-analysis">50.054 - Liveness Analysis</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Define the liveness analysis problem</li>
+<li>Apply lattice and fixed point algorithm to solve the liveness analysis problem</li>
+</ol>
+<h2 id="recall">Recall</h2>
+<pre><code class="language-js">// SIMP1
+x = input;
+y = 0;
+s = 0;
+while (y &lt; x) { 
+    y = y + 1;
+    t = s;  // t is not used.
+    s = s + y;  
+}
+return s;
+</code></pre>
+<p>In the above program the statement <code>t = s</code> is redundant as <code>t</code> is not used.</p>
+<p>It can be statically detected by a liveness analysis. </p>
+<h2 id="liveness-analysis">Liveness Analysis</h2>
+<p>A variable is consideredd <em>live</em> at a program location <span class="arithmatex">\(v\)</span> if it <strong>may</strong> be used in another program location <span class="arithmatex">\(u\)</span> if we follow the execution order, i.e. in the control flow graph there exists a path from <span class="arithmatex">\(v\)</span> to <span class="arithmatex">\(u\)</span>. Otherwise, the variable is considered <em>not live</em> or <em>dead</em>.  Note that from this analysis a variable is detected to be live, it is actually "maybe-live" since we are using a conservative approximation via lattice theory. On the hand, the negation, i.e. dead is definite.</p>
+<p>By applying this analysis to the above program, we can find out at the program locations where variables <strong>must</strong> be dead.</p>
+<h2 id="defining-the-lattice-for-livenesss-analysis">Defining the Lattice for Livenesss Analysis</h2>
+<p>Recall from the previous lesson, we learned that if <span class="arithmatex">\(A\)</span> be a set, then <span class="arithmatex">\(({\cal P}(A), \subseteq)\)</span> forms a complete lattice, where <span class="arithmatex">\({\cal P}(A)\)</span> the power set of <span class="arithmatex">\(A\)</span>.</p>
+<p>Applying this approach the liveness analysis, we consider the powerset  the set of all variables in the program.</p>
+<p>Let's recast the <code>SIMP1</code> program into pseudo assembly, let's label it as <code>PA1</code></p>
+<pre><code class="language-java">1: x &lt;- input
+2: y &lt;- 0
+3: s &lt;- 0
+4: b &lt;- y &lt; x
+5: ifn b goto 10
+6: y &lt;- y + 1
+7: t &lt;- s
+8: s &lt;- s + y
+9: goto 4
+10: rret &lt;- s
+11: ret
+</code></pre>
+<p>In <code>PA1</code> we find the set of variables <span class="arithmatex">\(V = \{input, x, y, s, t, b\}\)</span>, if we construct a powerset lattice <span class="arithmatex">\(({\cal P(V)}, \subseteq)\)</span>, we see the following hasse diagram</p>
+<div class="mermaid">graph TD;
+    N58["{b}"] --- N64["{}"] 
+    N59["{t}"] --- N64["{}"] 
+    N60["{s}"] --- N64["{}"] 
+    N61["{y}"] --- N64["{}"] 
+    N62["{x}"] --- N64["{}"] 
+    N63["{input}"] --- N64["{}"] 
+    N43["{t,b}"] --- N58["{b}"] 
+    N44["{s,b}"] --- N58["{b}"] 
+    N46["{y,b}"] --- N58["{b}"] 
+    N49["{x,b}"] --- N58["{b}"] 
+    N53["{input,b}"] --- N58["{b}"] 
+    N43["{t,b}"] --- N59["{t}"] 
+    N45["{s,t}"] --- N59["{t}"] 
+    N47["{y,t}"] --- N59["{t}"] 
+    N50["{x,t}"] --- N59["{t}"] 
+    N54["{input,t}"] --- N59["{t}"] 
+    N44["{s,b}"] --- N60["{s}"] 
+    N45["{s,t}"] --- N60["{s}"] 
+    N48["{y,s}"] --- N60["{s}"] 
+    N51["{x,s}"] --- N60["{s}"] 
+    N55["{input,s}"] --- N60["{s}"] 
+    N46["{y,b}"] --- N61["{y}"] 
+    N47["{y,t}"] --- N61["{y}"] 
+    N48["{y,s}"] --- N61["{y}"] 
+    N52["{x,y}"] --- N61["{y}"] 
+    N56["{input,y}"] --- N61["{y}"] 
+    N49["{x,b}"] --- N62["{x}"] 
+    N50["{x,t}"] --- N62["{x}"] 
+    N51["{x,s}"] --- N62["{x}"] 
+    N52["{x,y}"] --- N62["{x}"] 
+    N57["{input,x}"] --- N62["{x}"] 
+    N53["{input,b}"] --- N63["{input}"] 
+    N54["{input,t}"] --- N63["{input}"] 
+    N55["{input,s}"] --- N63["{input}"] 
+    N56["{input,y}"] --- N63["{input}"] 
+    N57["{input,x}"] --- N63["{input}"] 
+    N23["{s,t,b}"] --- N43["{t,b}"] 
+    N24["{y,t,b}"] --- N43["{t,b}"] 
+    N27["{x,t,b}"] --- N43["{t,b}"] 
+    N33["{input,t,b}"] --- N43["{t,b}"] 
+    N23["{s,t,b}"] --- N44["{s,b}"] 
+    N25["{y,s,b}"] --- N44["{s,b}"] 
+    N28["{x,s,b}"] --- N44["{s,b}"] 
+    N34["{input,s,b}"] --- N44["{s,b}"] 
+    N23["{s,t,b}"] --- N45["{s,t}"] 
+    N26["{y,s,t}"] --- N45["{s,t}"] 
+    N29["{x,s,t}"] --- N45["{s,t}"] 
+    N35["{input,s,t}"] --- N45["{s,t}"] 
+    N24["{y,t,b}"] --- N46["{y,b}"] 
+    N25["{y,s,b}"] --- N46["{y,b}"] 
+    N30["{x,y,b}"] --- N46["{y,b}"] 
+    N36["{input,y,b}"] --- N46["{y,b}"] 
+    N24["{y,t,b}"] --- N47["{y,t}"] 
+    N26["{y,s,t}"] --- N47["{y,t}"] 
+    N31["{x,y,t}"] --- N47["{y,t}"] 
+    N37["{input,y,t}"] --- N47["{y,t}"] 
+    N25["{y,s,b}"] --- N48["{y,s}"] 
+    N26["{y,s,t}"] --- N48["{y,s}"] 
+    N32["{x,y,s}"] --- N48["{y,s}"] 
+    N38["{input,y,s}"] --- N48["{y,s}"] 
+    N27["{x,t,b}"] --- N49["{x,b}"] 
+    N28["{x,s,b}"] --- N49["{x,b}"] 
+    N30["{x,y,b}"] --- N49["{x,b}"] 
+    N39["{input,x,b}"] --- N49["{x,b}"] 
+    N27["{x,t,b}"] --- N50["{x,t}"] 
+    N29["{x,s,t}"] --- N50["{x,t}"] 
+    N31["{x,y,t}"] --- N50["{x,t}"] 
+    N40["{input,x,t}"] --- N50["{x,t}"] 
+    N28["{x,s,b}"] --- N51["{x,s}"] 
+    N29["{x,s,t}"] --- N51["{x,s}"] 
+    N32["{x,y,s}"] --- N51["{x,s}"] 
+    N41["{input,x,s}"] --- N51["{x,s}"] 
+    N30["{x,y,b}"] --- N52["{x,y}"] 
+    N31["{x,y,t}"] --- N52["{x,y}"] 
+    N32["{x,y,s}"] --- N52["{x,y}"] 
+    N42["{input,x,y}"] --- N52["{x,y}"] 
+    N33["{input,t,b}"] --- N53["{input,b}"] 
+    N34["{input,s,b}"] --- N53["{input,b}"] 
+    N36["{input,y,b}"] --- N53["{input,b}"] 
+    N39["{input,x,b}"] --- N53["{input,b}"] 
+    N33["{input,t,b}"] --- N54["{input,t}"] 
+    N35["{input,s,t}"] --- N54["{input,t}"] 
+    N37["{input,y,t}"] --- N54["{input,t}"] 
+    N40["{input,x,t}"] --- N54["{input,t}"] 
+    N34["{input,s,b}"] --- N55["{input,s}"] 
+    N35["{input,s,t}"] --- N55["{input,s}"] 
+    N38["{input,y,s}"] --- N55["{input,s}"] 
+    N41["{input,x,s}"] --- N55["{input,s}"] 
+    N36["{input,y,b}"] --- N56["{input,y}"] 
+    N37["{input,y,t}"] --- N56["{input,y}"] 
+    N38["{input,y,s}"] --- N56["{input,y}"] 
+    N42["{input,x,y}"] --- N56["{input,y}"] 
+    N39["{input,x,b}"] --- N57["{input,x}"] 
+    N40["{input,x,t}"] --- N57["{input,x}"] 
+    N41["{input,x,s}"] --- N57["{input,x}"] 
+    N42["{input,x,y}"] --- N57["{input,x}"] 
+    N8["{y,s,t,b}"] --- N23["{s,t,b}"] 
+    N9["{x,s,t,b}"] --- N23["{s,t,b}"] 
+    N13["{input,s,t,b}"] --- N23["{s,t,b}"] 
+    N8["{y,s,t,b}"] --- N24["{y,t,b}"] 
+    N10["{x,y,t,b}"] --- N24["{y,t,b}"] 
+    N14["{input,y,t,b}"] --- N24["{y,t,b}"] 
+    N8["{y,s,t,b}"] --- N25["{y,s,b}"] 
+    N11["{x,y,s,b}"] --- N25["{y,s,b}"] 
+    N15["{input,y,s,b}"] --- N25["{y,s,b}"] 
+    N8["{y,s,t,b}"] --- N26["{y,s,t}"] 
+    N12["{x,y,s,t}"] --- N26["{y,s,t}"] 
+    N16["{input,y,s,t}"] --- N26["{y,s,t}"] 
+    N9["{x,s,t,b}"] --- N27["{x,t,b}"] 
+    N10["{x,y,t,b}"] --- N27["{x,t,b}"] 
+    N17["{input,x,t,b}"] --- N27["{x,t,b}"] 
+    N9["{x,s,t,b}"] --- N28["{x,s,b}"] 
+    N11["{x,y,s,b}"] --- N28["{x,s,b}"] 
+    N18["{input,x,s,b}"] --- N28["{x,s,b}"] 
+    N9["{x,s,t,b}"] --- N29["{x,s,t}"] 
+    N12["{x,y,s,t}"] --- N29["{x,s,t}"] 
+    N19["{input,x,s,t}"] --- N29["{x,s,t}"] 
+    N10["{x,y,t,b}"] --- N30["{x,y,b}"] 
+    N11["{x,y,s,b}"] --- N30["{x,y,b}"] 
+    N20["{input,x,y,b}"] --- N30["{x,y,b}"] 
+    N10["{x,y,t,b}"] --- N31["{x,y,t}"] 
+    N12["{x,y,s,t}"] --- N31["{x,y,t}"] 
+    N21["{input,x,y,t}"] --- N31["{x,y,t}"] 
+    N11["{x,y,s,b}"] --- N32["{x,y,s}"] 
+    N12["{x,y,s,t}"] --- N32["{x,y,s}"] 
+    N22["{input,x,y,s}"] --- N32["{x,y,s}"] 
+    N13["{input,s,t,b}"] --- N33["{input,t,b}"] 
+    N14["{input,y,t,b}"] --- N33["{input,t,b}"] 
+    N17["{input,x,t,b}"] --- N33["{input,t,b}"] 
+    N13["{input,s,t,b}"] --- N34["{input,s,b}"] 
+    N15["{input,y,s,b}"] --- N34["{input,s,b}"] 
+    N18["{input,x,s,b}"] --- N34["{input,s,b}"] 
+    N13["{input,s,t,b}"] --- N35["{input,s,t}"] 
+    N16["{input,y,s,t}"] --- N35["{input,s,t}"] 
+    N19["{input,x,s,t}"] --- N35["{input,s,t}"] 
+    N14["{input,y,t,b}"] --- N36["{input,y,b}"] 
+    N15["{input,y,s,b}"] --- N36["{input,y,b}"] 
+    N20["{input,x,y,b}"] --- N36["{input,y,b}"] 
+    N14["{input,y,t,b}"] --- N37["{input,y,t}"] 
+    N16["{input,y,s,t}"] --- N37["{input,y,t}"] 
+    N21["{input,x,y,t}"] --- N37["{input,y,t}"] 
+    N15["{input,y,s,b}"] --- N38["{input,y,s}"] 
+    N16["{input,y,s,t}"] --- N38["{input,y,s}"] 
+    N22["{input,x,y,s}"] --- N38["{input,y,s}"] 
+    N17["{input,x,t,b}"] --- N39["{input,x,b}"] 
+    N18["{input,x,s,b}"] --- N39["{input,x,b}"] 
+    N20["{input,x,y,b}"] --- N39["{input,x,b}"] 
+    N17["{input,x,t,b}"] --- N40["{input,x,t}"] 
+    N19["{input,x,s,t}"] --- N40["{input,x,t}"] 
+    N21["{input,x,y,t}"] --- N40["{input,x,t}"] 
+    N18["{input,x,s,b}"] --- N41["{input,x,s}"] 
+    N19["{input,x,s,t}"] --- N41["{input,x,s}"] 
+    N22["{input,x,y,s}"] --- N41["{input,x,s}"] 
+    N20["{input,x,y,b}"] --- N42["{input,x,y}"] 
+    N21["{input,x,y,t}"] --- N42["{input,x,y}"] 
+    N22["{input,x,y,s}"] --- N42["{input,x,y}"] 
+    N2["{x,y,s,t,b}"] --- N8["{y,s,t,b}"] 
+    N3["{input,y,s,t,b}"] --- N8["{y,s,t,b}"] 
+    N2["{x,y,s,t,b}"] --- N9["{x,s,t,b}"] 
+    N4["{input,x,s,t,b}"] --- N9["{x,s,t,b}"] 
+    N2["{x,y,s,t,b}"] --- N10["{x,y,t,b}"] 
+    N5["{input,x,y,t,b}"] --- N10["{x,y,t,b}"] 
+    N2["{x,y,s,t,b}"] --- N11["{x,y,s,b}"] 
+    N6["{input,x,y,s,b}"] --- N11["{x,y,s,b}"] 
+    N2["{x,y,s,t,b}"] --- N12["{x,y,s,t}"] 
+    N7["{input,x,y,s,t}"] --- N12["{x,y,s,t}"] 
+    N3["{input,y,s,t,b}"] --- N13["{input,s,t,b}"] 
+    N4["{input,x,s,t,b}"] --- N13["{input,s,t,b}"] 
+    N3["{input,y,s,t,b}"] --- N14["{input,y,t,b}"] 
+    N5["{input,x,y,t,b}"] --- N14["{input,y,t,b}"] 
+    N3["{input,y,s,t,b}"] --- N15["{input,y,s,b}"] 
+    N6["{input,x,y,s,b}"] --- N15["{input,y,s,b}"] 
+    N3["{input,y,s,t,b}"] --- N16["{input,y,s,t}"] 
+    N7["{input,x,y,s,t}"] --- N16["{input,y,s,t}"] 
+    N4["{input,x,s,t,b}"] --- N17["{input,x,t,b}"] 
+    N5["{input,x,y,t,b}"] --- N17["{input,x,t,b}"] 
+    N4["{input,x,s,t,b}"] --- N18["{input,x,s,b}"] 
+    N6["{input,x,y,s,b}"] --- N18["{input,x,s,b}"] 
+    N4["{input,x,s,t,b}"] --- N19["{input,x,s,t}"] 
+    N7["{input,x,y,s,t}"] --- N19["{input,x,s,t}"] 
+    N5["{input,x,y,t,b}"] --- N20["{input,x,y,b}"] 
+    N6["{input,x,y,s,b}"] --- N20["{input,x,y,b}"] 
+    N5["{input,x,y,t,b}"] --- N21["{input,x,y,t}"] 
+    N7["{input,x,y,s,t}"] --- N21["{input,x,y,t}"] 
+    N6["{input,x,y,s,b}"] --- N22["{input,x,y,s}"] 
+    N7["{input,x,y,s,t}"] --- N22["{input,x,y,s}"] 
+    N1["{input,x,y,s,t,b}"] --- N2["{x,y,s,t,b}"] 
+    N1["{input,x,y,s,t,b}"] --- N3["{input,y,s,t,b}"] 
+    N1["{input,x,y,s,t,b}"] --- N4["{input,x,s,t,b}"] 
+    N1["{input,x,y,s,t,b}"] --- N5["{input,x,y,t,b}"] 
+    N1["{input,x,y,s,t,b}"] --- N6["{input,x,y,s,b}"] 
+    N1["{input,x,y,s,t,b}"] --- N7["{input,x,y,s,t}"] 
+</div>
+<p>In the above lattice, the <span class="arithmatex">\(\top\)</span> is the full set of <span class="arithmatex">\(V\)</span> and the <span class="arithmatex">\(\bot\)</span> is the empty set <span class="arithmatex">\(\{\}\)</span>. The order <span class="arithmatex">\(\subseteq\)</span> is the subset relation <span class="arithmatex">\(\sqsubseteq\)</span>.</p>
+<h2 id="defining-the-monotone-constraint-for-liveness-analysis">Defining the Monotone Constraint for Liveness Analysis</h2>
+<p>In Sign Analysis the state variable <span class="arithmatex">\(s_i\)</span> denotes the mapping of the variables to the sign abstract values <strong>after</strong> the instruction <span class="arithmatex">\(i\)</span> is executed.</p>
+<p>In Liveness Analysis, we define the state variable <span class="arithmatex">\(s_i\)</span> as the set of variables may live <strong>before</strong> the execution of the instruction <span class="arithmatex">\(i\)</span>.</p>
+<p>In Sign Analysis the <span class="arithmatex">\(join(s_i)\)</span> function is defined as the  least upper bound of all the states that are preceding <span class="arithmatex">\(s_i\)</span> in the control flow.</p>
+<p>In Liveness Analysis, we define the <span class="arithmatex">\(join(s_i)\)</span> function as follows</p>
+<div class="arithmatex">\[
+join(s_i) = \bigsqcup succ(s_i)
+\]</div>
+<p>where <span class="arithmatex">\(succ(s_i)\)</span> returns the set of successors of <span class="arithmatex">\(s_i\)</span> according to the control flow graph.</p>
+<p>The monotonic functions can be defined by the following cases.</p>
+<ul>
+<li>case <span class="arithmatex">\(l:ret\)</span>, <span class="arithmatex">\(s_l = \{\}\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow src\)</span>, <span class="arithmatex">\(s_l = join(s_l) - \{ t \} \cup var(src)\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow src_1\ op\ src_2\)</span>, <span class="arithmatex">\(s_l = join(s_l) - \{t\} \cup var(src_1) \cup var(src_2)\)</span></li>
+<li>case <span class="arithmatex">\(l: r \leftarrow src\)</span>, <span class="arithmatex">\(s_l = join(s_l) \cup var(src)\)</span></li>
+<li>case <span class="arithmatex">\(l: r \leftarrow src_1\ op\ src_2\)</span>, <span class="arithmatex">\(s_l = join(s_l) \cup var(src_1) \cup var(src_2)\)</span></li>
+<li>case <span class="arithmatex">\(l: ifn\ t\ goto\ l'\)</span>, <span class="arithmatex">\(s_l = join(s_l) \cup \{ t \}\)</span></li>
+<li>other cases: <span class="arithmatex">\(s_l = join(s_l)\)</span></li>
+</ul>
+<p>The helper function <span class="arithmatex">\(var(src)\)</span> returns the set of variables (either empty or singleton) from operand <span class="arithmatex">\(src\)</span>.</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+var(r) &amp; = &amp; \{ \} \\ 
+var(t) &amp; = &amp; \{ t \} \\ 
+var(c) &amp; = &amp; \{ \}
+\end{array}
+\]</div>
+<p>By applying the <code>PA</code> program above we have</p>
+<pre><code>s11 = {}
+s10 = join(s10) U {s}               = {s}
+s9  = join(s9)                      = s4
+s8  = (join(s8) - {s}) U {s, y}     = (s9 - {s}) U {s, y}
+s7  = (join(s7) - {t}) U {s}        = (s8 - {t}) U {s}
+s6  = (join(s6) - {y}) U {y}        = (s7 - {y}) U {y}
+s5  = join(s5) U {b}                = s6 U s10 U {b}
+s4  = (join(s4) - {b}) U {y, x}     = (s5 - {b}) U {y, x}
+s3  = join(s3) - {s}                = s4 - {s}
+s2  = join(s2) - {y}                = s3 - {y}
+s1  = (join(s1) - {x}) U {input}    = (s2 - {x}) U {input}
+</code></pre>
+<p>For the ease of seeing the change of "flowing" direction, we order the state variables in descending order.</p>
+<p>By turning the above equation system to a monotonic function</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+f_1(s_{11}, s_{10}, s_9, s_8, s_7, s_6, s_5, s_4, s_3, s_2, s_1) &amp; = &amp; \left (
+    \begin{array}{c} 
+    \{\}, \\  
+    \{s\}, \\ 
+    s_4, \\ 
+    (s_9 -\{s\}) \cup \{s,y\}, \\ 
+    (s_8 - \{t\}) \cup \{s\}, \\ 
+    (s_7 - \{y\}) \cup \{y\}, \\ 
+    s_6 \cup s_{10} \cup \{b\}, \\ 
+    (s_5 - \{b\}) \cup \{y, x\}, \\ 
+    s_4 - \{s\}, \\ 
+    s_3 - \{y\}, \\ 
+    (s_2 - \{x\}) \cup \{ input \}
+    \end{array} 
+    \right )
+\end{array}
+\]</div>
+<blockquote>
+<p>Question, can you show that <span class="arithmatex">\(f_1\)</span> is a monotonic function?</p>
+</blockquote>
+<p>By applying the naive fixed point algorithm (or its optimized version) with starting states <code>s1 = ... = s11 = {}</code>, we solve the above constraints and find</p>
+<pre><code>s11 = {}
+s10 = {s}
+s9  = {y,x,s}
+s8  = {y,x,s}
+s7  = {y,x,s}
+s6  = {y,x,s}
+s5  = {y,x,s,b}
+s4  = {y,x,s}
+s3  = {y, x}
+s2  = {x}
+s1  = {input}
+</code></pre>
+<p>From which we can identify at least two possible optimization opportunities.</p>
+<ol>
+<li><code>t</code> is must be dead throughout the entire program. Hence instruction <code>7</code> is redundant.</li>
+<li><code>input</code> only lives at instruction 1. If it is not holding any heap references, it can be freed. </li>
+<li><code>x,y,b</code> lives until instruction 9. If they are not holding any heap references, they can be freed.</li>
+</ol>
+<h2 id="forward-vs-backward-analysis">Forward vs Backward Analysis</h2>
+<p>Given an analysis in which the monotone equations are defined by deriving the current state based on the predecessors's states, we call this analysis a <strong>forward analysis</strong>. </p>
+<p>Given an analysis in which the monotone equations are defined by deriving the current state based on the successor's states, we call this analysis a  <strong>backward analysis</strong>.</p>
+<p>For instance, the sign analysis is a forward analysis and the liveness analysis is a backward analysis.</p>
+<h2 id="may-analysis-vs-must-analysis">May Analysis vs Must Analysis</h2>
+<p>Given an analysis that makes use of powerset lattice, it is a <strong>may analysis</strong> if it gives an over-approximation. For example, liveness analysis analyses the set of variables that may be "live" at a program point. </p>
+<p>Given an analysis that makes use of powerset lattice, it is a <strong>must analysis</strong> if it gives an under-approximation. For example, if we negate the result of a liveness analysis to analyse the set of variables that must be "dead" at a program point. In this analysis we can keep track of the set of variables must be dead and use <span class="arithmatex">\(\sqcap\)</span> (which is <span class="arithmatex">\(\cap\)</span>) instead of <span class="arithmatex">\(\sqcup\)</span> (which is <span class="arithmatex">\(\cup\)</span>).</p></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/jquery-3.6.0.min.js"></script>
+<script src="../../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

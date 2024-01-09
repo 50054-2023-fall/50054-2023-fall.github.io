@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Advanced Topics in Static Analysis - Compiler Design and Program Analysis 50.054</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="../..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-advanced-topics-in-static-analysis">50.054 - Advanced Topics in Static Analysis</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcomes">Learning Outcomes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#recall-that-sign-analysis">Recall that sign analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#information-flow-analysis">Information Flow Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-advanced-topics-in-static-analysis">50.054 - Advanced Topics in Static Analysis</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Apply Path Sensitive Analysis to Sign Analysis.</li>
+<li>Apply Static Analysis to detect software security loopholes.</li>
+</ol>
+<h2 id="recall-that-sign-analysis">Recall that sign analysis</h2>
+<p>The Sign Analysis that we developed in the previous class has some limitation.</p>
+<pre><code class="language-java">// PA1               // s0 = [ x -&gt; top, t -&gt; top, input -&gt; top ]
+1: x &lt;- input        // s1 = s0[ x -&gt; s0(input) ]
+2: t &lt;- x &gt;= 0       // s2 = lub(s1,s5) [ t -&gt; lub(s1,s5)(x) &gt;== 0 ]
+3: ifn t goto 6      // s3 = s2   
+4: x &lt;- x - 1        // s4 = s3[ x -&gt; s3(x) -- + ]
+5: goto 2            // s5 = s4
+6: y &lt;- Math.sqrt(x) // s6 = s3 
+7: r_ret &lt;- y
+8: ret
+</code></pre>
+<p>The monotonic equations in the comments are defined based on the following lattice.</p>
+<div class="mermaid">graph
+    A["⊤"]---B[-]
+    A---C[0]
+    A---D[+]
+    B---E
+    C---E
+    D---E[⊥]
+</div>
+<p>And the abstract value operators are defined as </p>
+<table>
+<thead>
+<tr>
+<th>--</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td>+</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>&gt;==</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>0</td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>By converting the equation system into monotonic function </p>
+<pre><code>f1((s0, s1, s2, s3, s4, s5, s6)) = ( 
+    [ x -&gt; top, t -&gt; top, input -&gt; top ], 
+    s0[ x -&gt; s0(input) ], 
+    lub(s1,s5) [ t -&gt; lub(s1,s5)(x) &gt;== 0 ],
+    s2, 
+    s3[ x -&gt; s3(x) -- + ],
+    s4,
+    s3
+)
+</code></pre>
+<p>when we apply the fixed point algorithm to the <code>f1</code> and the VarSign lattice, we have the following solution</p>
+<pre><code>s0 = [ x -&gt; top, t -&gt; top, input -&gt; top ], 
+s1 = [ x -&gt; top, t -&gt; top, input -&gt; top ],
+s2 = [ x -&gt; top, t -&gt; top, input -&gt; top ],
+s3 = [ x -&gt; top, t -&gt; top, input -&gt; top ],
+s4 = [ x -&gt; top, t -&gt; top, input -&gt; top ],
+s5 = [ x -&gt; top, t -&gt; top, input -&gt; top ],
+s6 = [ x -&gt; top, t -&gt; top, input -&gt; top ]
+</code></pre>
+<p>At label 6, <code>x</code>'s sign is <span class="arithmatex">\(\top\)</span>. Such a problem exists in general as static analyses are approximation. Some point in the above analysis causes the result being overly approximated. </p>
+<ul>
+<li>Could it be due to the problem of how the abstract operators <code>--</code> and <code>&gt;==</code> are defined? <ul>
+<li>No, they are as best as we could infer given the variables (operands) are not assigned with concrete values. </li>
+</ul>
+</li>
+<li>
+<p>Could it be due to the lattice having too few elements (abstract values)? No, it remains as top, even if we introduce new elements such as <code>+0</code> and <code>-0</code> </p>
+<ul>
+<li>Let's say we adjust the lattice</li>
+</ul>
+<p><code>mermaid
+graph
+    A["⊤"]---A1[+0]
+    A["⊤"]---A2[-0]
+    A2---B[-]
+    A2---C[0]
+    A1---C[0]
+    A1---D[+]
+    B---E
+    C---E
+    D---E[⊥]</code>
+* and the abstract operators</p>
+<table>
+<thead>
+<tr>
+<th>--</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+0</th>
+<th>-0</th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-0</td>
+<td>+0</td>
+<td>-</td>
+<td>+</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>&gt;==</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+0</th>
+<th>-0</th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+</td>
+<td>+0</td>
+<td>+</td>
+<td>+0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td>0</td>
+<td>+0</td>
+<td>+0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td>+0</td>
+<td>+0</td>
+<td>+</td>
+<td>+0</td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td>+0</td>
+<td>0</td>
+<td>+0</td>
+<td>0</td>
+<td>+0</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+</td>
+<td>0</td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>It does not help, as it might give <code>t</code> a more precise abtract value but it does not help to improve the result of <code>x</code></li>
+</ul>
+</li>
+</ul>
+<p>The real cause of the loss of precision is path insensitivity of the sign analysis, i.e. it does not exploit the fact that the path of going in the while loop body is only valid under the pre-condition <code>x&gt;=0</code> and the path of going out of the while loop is only valid under the condition <code>x &lt; 0</code>. </p>
+<h3 id="path-sensitive-analysis-via-assertion">Path sensitive analysis via assertion</h3>
+<p>Supposed in the source language level, i.e SIMP, we include the assertion statement. For example, we consider the source program of <code>PA1</code> in SIMP with assertion statements inserted in the body of the while loop and at the following statement of the while loop.</p>
+<pre><code class="language-java">// SIMP2
+x = input;
+while x &gt;= 0 {
+    assert x &gt;= 0;
+    x = x - 1;
+}
+assert x &lt; 0;
+y = Math.sqrt(x);
+return y;
+</code></pre>
+<p>As we translate the above SIMP program in to Pseudo Assembly, we retain the assertions as instructions</p>
+<pre><code class="language-java">// PA2               // s0 = [ x -&gt; top, t -&gt; top, input -&gt; top ]
+1: x &lt;- input        // s1 = s0[ x -&gt; s0(input) ]
+2: t &lt;- x &gt;= 0       // s2 = lub(s1,s6) [ t -&gt; lub(s1,s6)(x) &gt;== 0 ]
+3: ifn t goto 7      // s3 = s2   
+4: assert x &gt;= 0     // s4 = s3[ x -&gt; gte(s3(x), 0) ]
+5: x &lt;- x - 1        // s5 = s4[ x -&gt; s4(x) -- + ]
+6: goto 2            // s6 = s5
+7: assert x &lt; 0      // s7 = s3[ x -&gt; lt(s3(x), 0) ] 
+8: y &lt;- Math.sqrt(x) // s8 = s7 
+9: r_ret &lt;- y
+10: ret
+</code></pre>
+<p>We could add the following monotonic function synthesis case </p>
+<ul>
+<li>case <span class="arithmatex">\(l: assert\ t\ &gt;=\ src\)</span>, <span class="arithmatex">\(s_l = join(s_l)[ t \mapsto gte(join(s_l)(t), join(s_l)(src))]\)</span></li>
+<li>case <span class="arithmatex">\(l: assert\ t\ &lt;\ src\)</span>, <span class="arithmatex">\(s_l = join(s_l)[ t \mapsto lt(join(s_l)(t), join(s_l)(src))]\)</span></li>
+</ul>
+<p>Where <span class="arithmatex">\(gte\)</span> and <span class="arithmatex">\(lt\)</span> are defined specifically for assertion instructions. The idea is to exploit the comparison operators to "narrow" down the range of the abstract signs.</p>
+<table>
+<thead>
+<tr>
+<th>gte</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+0</th>
+<th>-0</th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+0</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>+0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td>+</td>
+<td>+0</td>
+<td>+0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-0</td>
+<td>-0</td>
+<td>0</td>
+<td>-0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td>0</td>
+<td>-0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td>+</td>
+<td>+</td>
+<td>+</td>
+<td>+</td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td>0</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>lt</th>
+<th><span class="arithmatex">\(\top\)</span></th>
+<th>+0</th>
+<th>-0</th>
+<th>+</th>
+<th>-</th>
+<th>0</th>
+<th><span class="arithmatex">\(\bot\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td><span class="arithmatex">\(\top\)</span></td>
+<td>-</td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+0</td>
+<td>+0</td>
+<td>+0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td>+0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-0</td>
+<td>-0</td>
+<td>0</td>
+<td>-0</td>
+<td>-0</td>
+<td>-</td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>+</td>
+<td>+</td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td>+</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td>0</td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+<td><span class="arithmatex">\(\bot\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>To show that the above definitions of <code>gte</code> and <code>lt</code> are sound. We can consider the range notation of the abstract values. </p>
+<p>$$
+\begin{array}{rcl}
+\top &amp; = &amp; [-\infty, +\infty] \ 
++0 &amp; = &amp; [0, +\infty] \ 
+-0 &amp; = &amp; [-\infty, 0] \ 
+\ + &amp; = &amp; [1, +\infty] \ 
+\ - &amp; = &amp; [-\infty, -1] \ 
+0 &amp; = &amp; [0, 0] \ 
+\bot &amp; = &amp; [+\infty, -\infty] 
+\end{array}
+$$
+<span class="arithmatex">\([l, h]\)</span> denotes the set of integers <span class="arithmatex">\(i\)</span> where <span class="arithmatex">\(l \leq i \leq h\)</span>. <span class="arithmatex">\(\bot\)</span> is an empty range.
+We can think of <code>gte</code> as</p>
+<div class="arithmatex">\[
+gte([l_1, h_1], [l_2, h_2]) = [ max(l_1,l_2), min(h_1, +\infty)]
+\]</div>
+<p>Similiarly we can think of <code>lt</code> as </p>
+<div class="arithmatex">\[
+lt([l_1, h_1], [l_2, h_2]) = [ max(l_1,-\infty), min(h_1, h_2-1)]
+\]</div>
+<p>where <span class="arithmatex">\(+\infty - 1 = +\infty\)</span></p>
+<p>With the adjusted monotonic equations, we can now define the monotonic function <code>f2</code> as follows</p>
+<pre><code>f2((s0, s1, s2, s3, s4, s5, s6, s7, s8)) = ( 
+    [ x -&gt; top, t -&gt; top, input -&gt; top ]
+    s0[ x -&gt; s0(input) ], 
+    lub(s1,s6) [ t -&gt; lub(s1,s6)(x) &gt;== 0 ],
+    s2, 
+    s3[ x -&gt; gte(s3(x), 0) ],
+    s4[ x -&gt; s4(x) -- + ],
+    s5,
+    s3[ x -&gt; lt(s3(x), 0) ],
+    s7 
+)
+</code></pre>
+<p>By applying the fixed point algorithm to <code>f2</code> we find the following solution</p>
+<pre><code>s0 = [ x -&gt; top, t -&gt; top, input -&gt; top ]
+s1 = [ x -&gt; top, t -&gt; top, input -&gt; top ]
+s2 = [ x -&gt; top, t -&gt; +0, input -&gt; top ]
+s3 = [ x -&gt; top, t -&gt; +0, input -&gt; top ]
+s4 = [ x -&gt; +0, t -&gt; +0, input -&gt; top ]
+s5 = [ x -&gt; top, t -&gt; +0, input -&gt; top ]
+s6 = [ x -&gt; -, t -&gt; +0, input -&gt; top]
+s7 = [ x -&gt; -, t -&gt; +0, input -&gt; top]
+</code></pre>
+<p>which detects that the sign of <code>x</code> at instruction 8 is <code>-</code>.</p>
+<h2 id="information-flow-analysis">Information Flow Analysis</h2>
+<p>One widely applicable static analysis is information flow analysis.   </p>
+<p>The information flow in a program describes how data are evaluated and propogated in the program via variables and operations.</p>
+<p>The goal of information flow analysis is to identify "incorrect information flow". There two main kinds.</p>
+<ol>
+<li>Low security level data is being written into high security level resources, AKA tainted flow, e.g. SQL injection.</li>
+<li>High security level data is being sent to low security level observer. i.e, sensitive resource being read by unauthorized users, AKA, information disclosure.</li>
+</ol>
+<h3 id="tainted-flow">Tainted Flow</h3>
+<p>IN this case, we say that the information flow is tainted if some sensitive information is updated / written by unauthorized users, e.g. </p>
+<pre><code class="language-java">String id = request.getParameter("id"); // untrusted user input 
+String query = "SELECT account_number, account_balance FROM customer_data WHERE account_owner_id = " + id;
+try {
+    Statement statement = dbconnection.createStatement();
+    ResultSet res = statement.executeQuery( query ); // access sensitive resource
+}
+</code></pre>
+<p>The above example was adapted from some online example showing what SQL injection vulnerable python code looks like. In this case we could argue that it is a tainted control flow as the untrusted user data is being used directly to access the sensitive resources. </p>
+<p>When the <code>id</code> is <code>"' OR 'a'='a'; delete from customer_data; --"</code>, the malicious user gains the login access and deletes all records from the <code>customer_data</code> table.</p>
+<p>This can be prevented by using a prepared statement. </p>
+<pre><code class="language-java">String id = request.getParameter("id"); // untrusted user input 
+String query = "SELECT account_number, account_balance FROM customer_data WHERE account_owner_id = ?";
+try {
+    PreparedStatement pstmt = connection.prepareStatement( query );
+    pstmt.setString(1, id); // pstmt is sanitized before being used.
+    ResultSet results = pstmt.executeQuery(); 
+}
+</code></pre>
+<p>One may argue that using manual source code review should help to identify this kind of issues.
+The situation gets complicated when the program control is not simple</p>
+<p>Let's recast the above into SIMP, we would have the vulunerable code as </p>
+<pre><code class="language-java">id = input();
+query = "select " + id;
+exec(query);
+return id;
+</code></pre>
+<p>We assume that we've extended SIMP to support string values and string concatenation.  The <code>input</code> is a function that prompts the user for input. The <code>exec</code> function is a database builtin function.</p>
+<p>The following version fixed the vulnerability, assume the <code>sanitize</code> function, sanitizes the input.</p>
+<pre><code class="language-java">id = input();
+query = "select ";
+query = sanitize(query, id)
+exec(query);
+return id;
+</code></pre>
+<p>To increase the level of compexlity, let's add some control flow to the example.</p>
+<pre><code class="language-java">id = input();
+query = "select " + id;
+while (id == "") {
+    id = input();
+    query = sanitize("select ", id)
+}
+exec(query);
+return id;
+</code></pre>
+<p>In the above, it is not directly clear that the <code>exec()</code> is given a sanitized query. The manual check becomes exponentially hard as the code size grows. </p>
+<p>We can solve it using a forward may analysis. We define the abstract domain as the following complete lattice. </p>
+<div class="mermaid">graph
+    tainted --- clean --- bot("⊥")
+</div>
+<p>We rewrite the above SIMP program into the following PA equivalent.</p>
+<pre><code class="language-js">1: id &lt;- input()
+2: query &lt;- "select " + id
+3: b &lt;- id == ""
+4: ifn b goto 
+5: id &lt;- input()
+6: query &lt;- sanitize("select", id) 
+7: goto 3
+8: _ &lt;- exec(query)
+9: r_ret &lt;- id 
+10: ret
+</code></pre>
+<p>We define the equation generation rules as follows, </p>
+<div class="arithmatex">\[
+join(s_i) = \bigsqcup pred(s_i)
+\]</div>
+<p>where <span class="arithmatex">\(pred(s_i)\)</span> returns the set of predecessors of <span class="arithmatex">\(s_i\)</span> according to the control flow graph.</p>
+<p>The monotonic functions can be defined by the following cases.</p>
+<ul>
+<li>case <span class="arithmatex">\(l == 0\)</span>, <span class="arithmatex">\(s_0 = \lbrack x \mapsto \bot \mid x \in V\rbrack\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow src\)</span>, <span class="arithmatex">\(s_l = join(s_l) \lbrack t \mapsto join(s_l)(src)\rbrack\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow src_1\ op\ src_2\)</span>, <span class="arithmatex">\(s_l = join(s_l) \lbrack t \mapsto (join(s_l)(src_1)\ \sqcup \ join(s_l)(src_2))\rbrack\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow input()\)</span>: <span class="arithmatex">\(s_l = join(s_l) \lbrack t \mapsto tainted\rbrack\)</span></li>
+<li>case <span class="arithmatex">\(l: t \leftarrow sanitize(src_1, src_2)\)</span>: <span class="arithmatex">\(s_l = join(s_l) \lbrack t \mapsto clean\rbrack\)</span></li>
+<li>other cases: <span class="arithmatex">\(s_l = join(s_l)\)</span></li>
+</ul>
+<p>Let <span class="arithmatex">\(m\)</span> be a map lattice object, and <span class="arithmatex">\(src\)</span> be a PA source operand, the lookup operation <span class="arithmatex">\(m(src)\)</span> for sign analysis is defined as follows </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+m(c) &amp; = &amp; clean \\
+m(t) &amp; = &amp; \left \{
+        \begin{array}{cc}
+        v &amp; t \mapsto v \in m \\ 
+        error &amp; otherwise
+        \end{array} 
+           \right . \\ \\ 
+m(r) &amp; = &amp; error 
+\end{array}
+\]</div>
+<p>We inline the equations as comments in the PA code.</p>
+<pre><code class="language-js">                                    // s0 = [id -&gt; bot, query -&gt; bot, b -&gt; bot]
+1: id &lt;- input()                    // s1 = s0[ id -&gt; tainted ]  
+2: query &lt;- "select " + id          // s2 = s1[ query -&gt; lub(clean, s1(id)) ]
+3: b &lt;- id == ""                    // s3 = lub(s2,s7)[ b -&gt; lub( lub(s2,s7)(id), clean) ]
+4: ifn b goto 8                     // s4 = s3
+5: id &lt;- input()                    // s5 = s4[ id -&gt; tainted ]
+6: query &lt;- sanitize("select", id)  // s6 = s5[ query -&gt; clean ]
+7: goto 3                           // s7 = s6
+8: exec(query)                      // s8 = s4                  
+9: r_ret &lt;- id                      // s9 = s8
+10: ret                             
+</code></pre>
+<p>By applying the above we have the followning monotonic function.</p>
+<pre><code>f((s0,s1,s2,s3,s4,s5,s6,s7,s8,s9)) = (
+    [id -&gt; bot, query -&gt; bot, b -&gt; bot],
+    s0[ id -&gt; tainted], 
+    s1[ query -&gt; lub(clean, s1(id)) ],
+    lub(s2,s7)[ b -&gt; lub( lub(s2,s7)(id), clean) ],
+    s3,
+    s4[ id -&gt; tainted ],
+    s5[ query -&gt; clean ],
+    s6,
+    s4,
+    s8    
+)
+</code></pre>
+<p>By applying the fixed point algorithm, we find the following solution for the monotonic equations.</p>
+<pre><code>s0 = [id -&gt; bot, query -&gt; bot, b -&gt; bot]
+s1 = [id -&gt; tainted, query -&gt; bot, b -&gt; bot] 
+s2 = [id -&gt; tainted, query -&gt; tainted, b -&gt; bot]
+s3 = [id -&gt; tainted, query -&gt; tainted, b -&gt; tainted ]
+s4 = [id -&gt; tainted, query -&gt; tainted, b -&gt; tainted ] 
+s5 = [id -&gt; tainted, query -&gt; tainted, b -&gt; tainted ]
+s6 = [id -&gt; tainted, query -&gt; clean, b -&gt; tainted ]   
+s7 = [id -&gt; tainted, query -&gt; clean, b -&gt; tainted ]   
+s8 = [id -&gt; tainted, query -&gt; tainted, b -&gt; tainted ]
+s9 = [id -&gt; tainted, query -&gt; tainted, b -&gt; tainted ]   
+</code></pre>
+<p>which says that the use of variable <code>query</code> at instruction 8 is risky as <code>query</code> may be tainted at this point.</p>
+<h3 id="sensitive-information-disclosure">Sensitive Information Disclosure</h3>
+<p>In this case of incorrect information flow, sensitive information may be written / observable by low access level agents, users or system, directly or indirectly. </p>
+<pre><code class="language-java">String username = request.getParameter("username"); 
+String password = request.getParameter("password"); // sensitive user input 
+String cmd = "INSERT INTO user VALUES (?, ?)";
+try {
+    PreparedStatement pstmt = connection.prepareStatement( cmd );
+    pstmt.setString(1, username); 
+    pstmt.setString(2, password);  // user password is saved without hashing?
+    ResultSet results = pstmt.execute(); 
+}
+</code></pre>
+<p>In the above code snippet, we retrieve the username and password from a HTTP form request object and create a user record in the database table. The issue with this piece of code is that the user password is inserted into the database without hashing. This violates the security policy of which the user password is confidential where the database table <code>user</code> is having a lower security level, since it is accessed by the database users. </p>
+<pre><code class="language-java">String username = request.getParameter("username"); 
+String password = request.getParameter("password"); // sensitive user input 
+String cmd = "INSERT INTO user VALUES (?, ?)";
+try {
+    PreparedStatement pstmt = connection.prepareStatement( cmd );
+    String hashed_password = hash(password); // the hash serves as a declassification operation.
+    pstmt.setString(1, username); 
+    pstmt.setString(2, hashed_password);  // user password is saved without hashing?
+    ResultSet results = pstmt.execute(); 
+}
+</code></pre>
+<p>In the above modified version, we store the hashed password instead, which is safe since it is hard to recover the raw password based on the hashed password.  The <code>hash</code> function here serves as a declassifier that takes a high security level input and returns a lower secirity level output. </p>
+<p>We can analyses this kind of information flow that will accept the second snippet and reject the first one. The idea is nearly identical to the tainted analysis, except,</p>
+<ul>
+<li>We will have a different lattice for security level. </li>
+</ul>
+<div class="mermaid">graph
+    secret --- confidential --- bot("⊥")
+</div>
+<p>where <code>secret</code> has a higher level of security than <code>confidential</code>. </p>
+<ul>
+<li>Instead of using <code>sanitize</code> to increase the level of security, we use <code>hash</code> (or <code>declassify</code>) to lower the level of security.</li>
+</ul></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/jquery-3.6.0.min.js"></script>
+<script src="../../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>50.054 - Dynamic Semantics - Compiler Design and Program Analysis 50.054</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../handout/" class="nav-link">Handout</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#50054-dynamic-semantics" class="nav-link">50.054 - Dynamic Semantics</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#learning-outcomes" class="nav-link">Learning Outcomes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#operational-semantics" class="nav-link">Operational Semantics</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#operational-semantics-of-pseudo-assembly" class="nav-link">Operational Semantics of Pseudo Assembly</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#denotational-semantics-optional-materials" class="nav-link">Denotational Semantics (Optional Materials)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="50054-dynamic-semantics">50.054 - Dynamic Semantics</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Explain the small step operational semantics of a programming language.</li>
+<li>Explain the big step operational semantics of a programming language.</li>
+<li>Formalize the run-time behavior of a programming language using small step operational semantics.</li>
+<li>Formalize the run-time behavior of a programming language using big step operational semantics.</li>
+</ol>
+<p>Recall that by formalizing the dynamic semantics of a program we are keen to find out</p>
+<ol>
+<li>How does the program get executed?</li>
+<li>What does the program compute / return?</li>
+</ol>
+<h2 id="operational-semantics">Operational Semantics</h2>
+<p>Operational Semantics specifies how a program get executed.</p>
+<p>For example, in the earlier unit, when studying lambada expression, we made use of the <span class="arithmatex">\(\beta\)</span>-reduction, the substitution and alpha renaming rules to formalize the execution of a simple lambda expression.
+As the language grows to include let-binding, conditional expression, we extend the set of rules to include <span class="arithmatex">\({\tt (Let)}\)</span>, <span class="arithmatex">\({\tt (IfI)}\)</span>, <span class="arithmatex">\({\tt (IfT)}\)</span> and <span class="arithmatex">\({\tt (IfF)}\)</span>. The set of rules in this example defines the operational semantics of the programming language lambda expression. We can apply these rules to "evaluate" a lambda expression by rewriting it by picking a matching rule (w.r.t to the LHS) and turn it into the form of the RHS. This style of semantics specification is called the <em>small step</em> operational semantics as we only specify the intermediate result when we apply a rule.  </p>
+<p>As we are going to design and implement a compiler for the SIMP language, it is essential to find out how a SIMP program gets executed.</p>
+<p>To formalize the execution of SIMP program, we can define a set of rewriting rules similar to those for lambda calculus. We need to consider different cases.</p>
+<h3 id="small-step-operational-semantics-of-simp">Small-Step Operational Semantics of SIMP</h3>
+<p>Let's try to formalize the Operational Semantics of SIMP language,</p>
+<p>$$
+\begin{array}{rccl}
+(\tt SIMP\ Environment) &amp; \Delta &amp; \subseteq &amp; (X \times c)
+\end{array}
+$$
+We model the memory environment of a SIMP program as pair of variable and values. We write <span class="arithmatex">\(dom(\Delta)\)</span> to denote the domain of <span class="arithmatex">\(\Delta\)</span>, i.e. <span class="arithmatex">\(\{ X \mid (X,c) \in \Delta \}\)</span>. We assume for all <span class="arithmatex">\(X \in dom(\Delta)\)</span>, there exists only one entry of <span class="arithmatex">\((X,c) \in \Delta\)</span>.</p>
+<p>Given <span class="arithmatex">\(S\)</span> is a set of pairs, we write <span class="arithmatex">\(S(x)\)</span> to denote <span class="arithmatex">\(a\)</span> if <span class="arithmatex">\((x,a) \in S\)</span>, an error otherwise. We write <span class="arithmatex">\(S \oplus (x,a)\)</span> to denote <span class="arithmatex">\(S - \{(x, S(x))\} \cup \{(x, a)\}\)</span>. </p>
+<p>We define the operational semantics of SIMP with two sets of rules.</p>
+<p>The first set of rules deal with expression.</p>
+<h4 id="small-step-operational-semantics-of-simp-expression">Small Step Operational Semantics of SIMP Expression</h4>
+<p>The set of small step operational semantics for expressions is defined in a relation <span class="arithmatex">\(\Delta \vdash E \longrightarrow E'\)</span>.</p>
+<div class="arithmatex">\[
+{\tt (sVar)} ~~~ \Delta \vdash X \longrightarrow \Delta(X)
+$$
+The ${\tt (sVar)}$ rule looks up the value of variable $X$ from the memory environment. If the variable is not found, it gets stuck and an error is returned.
+$$
+\begin{array}{rc}
+{\tt (sOp1)} &amp; \begin{array}{c}
+        \Delta \vdash E_1 \longrightarrow E_1'  
+        \\ \hline
+        \Delta \vdash E_1\ OP\ E_2 \longrightarrow E_1'\ OP\ E_2
+        \end{array}
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (sOp2)} &amp; \begin{array}{c}
+        \Delta \vdash E_2 \longrightarrow E_2'  
+        \\ \hline
+        \Delta \vdash C_1 \ OP\ E_2 \longrightarrow C_1\ OP\ E_2'
+        \end{array}
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (sOp3)} &amp; \begin{array}{c}
+        C_3 = C_1 \ OP\ C_2
+        \\ \hline
+        \Delta \vdash C_1 \ OP\ C_2 \longrightarrow C_3
+        \end{array}
+\end{array}
+\]</div>
+<p>The above three rules handle the binary operation expression.</p>
+<ol>
+<li><span class="arithmatex">\({\tt (sOp1)}\)</span> matches with the case where both operands are not constant values. It evalues the first operand by one step.  </li>
+<li><span class="arithmatex">\({\tt (sOp2)}\)</span> matches with the case where the first operand becomes constant, it evaluates the second operand by one step.</li>
+<li><span class="arithmatex">\({\tt (sOp3)}\)</span> matches with the case where both operands are constant. It returns the result by applying the binary operation to the two constant values.</li>
+</ol>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (sParen1)} &amp; \begin{array}{c}
+                 \Delta \vdash E \longrightarrow E'
+                 \\ \hline 
+                 \Delta \vdash (E) \longrightarrow (E')
+                 \end{array} \\ \\
+{\tt (sParen2)} &amp; \begin{array}{c}
+                 \Delta \vdash (c) \longrightarrow c
+                 \end{array}
+\end{array}
+\]</div>
+<p>The rules <span class="arithmatex">\({\tt  (sParen1)}\)</span> and <span class="arithmatex">\({\tt (sParent2)}\)</span> evaluate an expression enclosed by parantheses. </p>
+<h4 id="small-step-operational-semantics-of-simp-statement">Small Step Operational Semantics of SIMP statement</h4>
+<p>The small step operational semantics of statements are defined by the relation
+<span class="arithmatex">\((\Delta, S) \longrightarrow (\Delta', S')\)</span>. The pair of a environment and a statement is called a program configuration.</p>
+<div class="arithmatex">\[
+\begin{array}{cc}
+{\tt (sAssign1)} &amp; \begin{array}{c}
+     \Delta\vdash E \longrightarrow E'
+     \\ \hline
+     (\Delta, X = E;) \longrightarrow  (\Delta, X = E';)
+     \end{array}
+\end{array}
+\]</div>
+<p>$$
+\begin{array}{cc}
+{\tt (sAssign2)} &amp; \begin{array}{c}
+      \Delta' = \Delta \oplus (X, C)
+     \ \hline
+     (\Delta, X = C;) \longrightarrow (\Delta', nop)
+     \end{array}
+\end{array}
+$$
+The rules <span class="arithmatex">\({\tt (sAssign1)}\)</span> and <span class="arithmatex">\({\tt (sAssign2)}\)</span> handle the assignment statements.</p>
+<ol>
+<li><span class="arithmatex">\({\tt (sAssign1)}\)</span> matches with the case that the RHS of the assignment is not a constant, it evaluates the RHS expression by one step.</li>
+<li><span class="arithmatex">\({\tt (sAssign2)}\)</span> matches with the case that the RHS is a constant, it updates the environment by setting <span class="arithmatex">\(C\)</span> as the new value of variable <span class="arithmatex">\(X\)</span>. The statement of the resulting configuration a <span class="arithmatex">\(nop\)</span>.</li>
+</ol>
+<div class="arithmatex">\[
+\begin{array}{cc}
+{\tt (sIf1)} &amp; \begin{array}{c}
+    \Delta \vdash E \longrightarrow E'
+    \\ \hline
+    (\Delta, if\ E\ \{\overline{S_1}\}\ else\ \{\overline{S_2}\})
+    \longrightarrow (\Delta,  if\ E'\ \{\overline{S_1}\}\ else\ \{\overline{S_2}\})
+    \end{array}
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{cc}
+{\tt (sIf2)} &amp;
+    (\Delta, if\ true\ \{\overline{S_1}\}\ else\ \{\overline{S_2}\})
+    \longrightarrow (\Delta, \overline{S_1})
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{cc}
+{\tt (sIf3)} &amp;
+    (\Delta, if\ false\ \{\overline{S_1}\}\ else\ \{\overline{S_2}\})
+    \longrightarrow (\Delta, \overline{S_2})
+\end{array}
+\]</div>
+<p>The rules <span class="arithmatex">\({\tt (sIf1)}\)</span>, <span class="arithmatex">\({\tt (sIf2)}\)</span> and <span class="arithmatex">\({\tt (sIf3)}\)</span> handle the if-else statement.</p>
+<ol>
+<li><span class="arithmatex">\({\tt (sIf1)}\)</span> matches with the case where the condition expression <span class="arithmatex">\(E\)</span> is not a constant value. It evaluates <span class="arithmatex">\(E\)</span> to <span class="arithmatex">\(E'\)</span> one step.</li>
+<li><span class="arithmatex">\({\tt (sIf2)}\)</span> matches with the case where the condition expression is <span class="arithmatex">\(true\)</span>, it proceeds to evaluate the statements in the then clauses.</li>
+<li><span class="arithmatex">\({\tt (sIf3)}\)</span> matches with the case where the condition expression is <span class="arithmatex">\(false\)</span>, it proceeds to evaluate the statements in the else clauses.</li>
+</ol>
+<div class="arithmatex">\[
+\begin{array}{cc}
+{\tt (sWhile)} &amp;
+    (\Delta, while\ E\ \{\overline{S}\} )
+    \longrightarrow (\Delta,  if\ E\ \{\overline{S}; while\ E\ \{\overline{S}\}\}\ else\ \{ nop \})
+\end{array}
+\]</div>
+<p>The rule <span class="arithmatex">\({\tt (sWhile)}\)</span> evaluates the while statement by reiwrting it into a if-else statement.</p>
+<ul>
+<li>In the then branch, we unroll the while loop body once followed by the while loop.</li>
+<li>In the else branch, we should exit the while loop thus, a <span class="arithmatex">\(nop\)</span> statement is used.</li>
+</ul>
+<div class="arithmatex">\[
+{\tt (sNopSeq)} ~~ (\Delta, nop; \overline{S}) \longrightarrow (\Delta, \overline{S})
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{cc}
+{\tt (sSeq)} &amp; \begin{array}{c}
+    S \neq nop\ \ \ (\Delta, S) \longrightarrow (\Delta', S')
+    \\ \hline
+   (\Delta, S \overline{S}) \longrightarrow (\Delta', S' \overline{S})
+   \end{array}
+\end{array}
+\]</div>
+<p>The rules <span class="arithmatex">\({\tt (sNopSeq)}\)</span> and <span class="arithmatex">\({\tt (sSeq)}\)</span> handle a sequence of statements.</p>
+<ol>
+<li><span class="arithmatex">\({\tt (sNopSeq)}\)</span> rule handles the special case where the leading statement is a <span class="arithmatex">\(nop\)</span>.</li>
+<li><span class="arithmatex">\({\tt (Seq)}\)</span> rule handles the case where the leading statement is not a <span class="arithmatex">\(nop\)</span>. It evalues <span class="arithmatex">\(S\)</span> by one step.</li>
+</ol>
+<p>For example,</p>
+<pre><code class="language-python">{(input, 1)},
+x = input;
+s = 0;
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+---&gt; # using (sSeq)
+   {(input,1)}, x = input 
+   ---&gt; # (sAssign1) 
+   {(input,1)}, x = 1
+   ---&gt; # (sAssign2) 
+   {(input, 1), (x,1)}, nop
+---&gt;
+{(input,1), (x,1)},
+nop;
+s = 0;
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+
+---&gt; # (sNopSeq)
+
+
+{(input,1), (x,1)},
+s = 0;
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+
+---&gt; # (sSeq), (sAssign2), (sNoSeq)
+
+{(input,1), (x,1), (s,0)},
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+
+---&gt; # (sSeq), (sAssign2), (sNoSeq)
+
+{(input,1), (x,1), (s,0), (c,0)},
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+---&gt; # (sSeq) 
+    {(input,1), (x,1), (s,0), (c,0)},
+    while c &lt; x {
+        s = c + s;
+        c = c + 1;
+    }
+    ---&gt; # (sWhile)
+
+    {(input,1), (x,1), (s,0), (c,0)},
+    if (c &lt; x) {
+        s = c + s;
+        c = c + 1;
+        while c &lt; x {
+            s = c + s;
+            c = c + 1;
+        }
+    } else {
+        nop
+    }
+
+    ---&gt; # (sIf1)
+        {(input,1), (x,1), (s,0), (c,0)}, c &lt; x 
+        ---&gt; # (sOp1) 
+        {(input,1), (x,1), (s,0), (c,0)}, 0 &lt; x 
+        ---&gt; # (sOp2) 
+        {(input,1), (x,1), (s,0), (c,0)}, 0 &lt; 1 
+        ---&gt; # (sOp3) 
+        {(input,1), (x,1), (s,0), (c,0)}, true 
+    ---&gt; 
+    {(input,1), (x,1), (s,0), (c,0)},
+    if true {
+        s = c + s;
+        c = c + 1;
+        while c &lt; x {
+            s = c + s;
+            c = c + 1;
+        }
+    } else {
+        nop
+    }
+    ---&gt; # (sIf2)
+    {(input,1), (x,1), (s,0), (c,0)},
+    s = c + s;
+    c = c + 1;
+    while c &lt; x {
+        s = c + s;
+        c = c + 1;
+    }
+    ---&gt; # (sSeq)
+        {(input,1), (x,1), (s,0), (c,0)},
+        s = c + s ---&gt; # (sAssign1)
+            {(input,1), (x,1), (s,0), (c,0)},
+            c + s ---&gt; # (sOp1) 
+            0 + s ---&gt; # (sOp2) 
+            0 + 0 ---&gt; # (sOp3) 
+            0
+        {(input,1), (x,1), (s,0), (c,0)},
+        s = 0 ---&gt; # (sAssign2)
+        {(input,1), (x,1), (s,0), (c,0)},
+        nop 
+    ---&gt; # (sNopSeq)
+    {(input,1), (x,1), (s,0), (c,0)},
+    c = c + 1;
+    while c &lt; x {
+        s = c + s;
+        c = c + 1;
+    }
+    ---&gt; # (sSeq)
+        {(input,1), (x,1), (s,0), (c,0)},
+        c = c + 1 ---&gt; # (sAssign1)
+            {(input,1), (x,1), (s,0), (c,0)},
+            c + 1 ---&gt; # (sOp1)
+            0 + 1 ---&gt; # (SOp3)
+            1
+        {(input,1), (x,1), (s,0), (c,1)},
+        c = 1 ---&gt; # (sAssign2)
+        {(input,1), (x,1), (s,0), (c,1)},
+        nop
+    ---&gt; # (sNopSeq) 
+    {(input,1), (x,1), (s,0), (c,1)},
+    while c &lt; x {
+        s = c + s;
+        c = c + 1;
+    }
+    ---&gt; # (sWhile)
+    {(input,1), (x,1), (s,0), (c,1)},
+    if (c &lt; x) {
+        s = c + s;
+        c = c + 1;
+        while c &lt; x {
+            s = c + s;
+            c = c + 1;
+        }
+    } else {
+        nop
+    }
+    ---&gt; # (sIf1)
+        {(input,1), (x,1), (s,0), (c,1)}, c &lt; x 
+        ---&gt; # (sOp1) 
+        {(input,1), (x,1), (s,0), (c,1)}, 1 &lt; x 
+        ---&gt; # (sOp2) 
+        {(input,1), (x,1), (s,0), (c,1)}, 1 &lt; 1 
+        ---&gt; # (sOp3) 
+        {(input,1), (x,1), (s,0), (c,1)}, false 
+    ---&gt; 
+    {(input,1), (x,1), (s,0), (c,1)},
+    if false {
+        s = c + s;
+        c = c + 1;
+        while c &lt; x {
+            s = c + s;
+            c = c + 1;
+        }
+    } else {
+        nop
+    }
+    ---&gt; # (sIf3)
+    {(input,1), (x,1), (s,0), (c,1)},
+    nop
+---&gt; # (sNopSeq)
+{(input,1), (x,1), (s,0), (c,1)}
+return s;
+</code></pre>
+<p>At last the derivation stop at the return statement. We can return the value <code>0</code> as result.</p>
+<h3 id="big-step-operational-semantics">Big Step Operational Semantics</h3>
+<p>Small step operational semantics defines the run-time behavior of programs step by step (kinda like slow motion.)
+Some times we want to define the run-time behaviors by "fast-forwarding" to the result.
+This leads us to the big step operatinal semantics.
+Big step operatinal semantics in some literature is also called the structural operational semantics as it leverages on the syntactic structure of the program.</p>
+<h4 id="big-step-operational-semantics-for-simp-expressions">Big Step Operational Semantics for SIMP expressions</h4>
+<p>We define the big step oeprational semantics for SIMP expressions via a relation
+<span class="arithmatex">\(\Delta \vdash E \Downarrow C\)</span>, which reads under the memory environment <span class="arithmatex">\(\Delta\)</span> the expression <span class="arithmatex">\(E\)</span> is evaluated constant <span class="arithmatex">\(C\)</span>.</p>
+<p>We consider the following three rules
+$$
+{\tt (bConst)} ~~~~ \Delta \vdash C \Downarrow C
+$$
+In case that the expression is a constant, we return the constant itself.</p>
+<div class="arithmatex">\[
+{\tt (bVar)} ~~~~ \Delta \vdash X \Downarrow \Delta(X)
+\]</div>
+<p>In case that the expression is a variable <span class="arithmatex">\(X\)</span>, we return the value associated with <span class="arithmatex">\(X\)</span> in <span class="arithmatex">\(\Delta\)</span>.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (bOp)} &amp; \begin{array}{c}
+            \Delta \vdash E_1 \Downarrow C_1 ~~~ \Delta \vdash E_2 \Downarrow C_2 ~~~~
+            C_1\ OP\ C_2 = C_3
+            \\ \hline
+            \Delta \vdash E_1\ OP\ E_2 \Downarrow C_3
+            \end{array}
+\end{array}
+\]</div>
+<p>in case that the expression is a binary operation, we evaluate the two operands to values and apply the binary operation to the constant values.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (bParen)} &amp; \begin{array}{c}
+                \Delta \vdash E \Downarrow C
+                \\ \hline
+                \Delta \vdash (E) \Downarrow C
+               \end{array}
+\end{array}
+\]</div>
+<p>the last rule <span class="arithmatex">\({\tt (bParen)}\)</span> evaluates an expression enclosed by parantheses.  </p>
+<h4 id="big-step-operational-semantics-for-simp-statements">Big Step Operational Semantics for SIMP statements</h4>
+<p>We define the big step operational semantics for SIMP statement using a relation <span class="arithmatex">\((\Delta, S) \Downarrow \Delta'\)</span>, which says the program configuration <span class="arithmatex">\((\Delta, S)\)</span> is evaluated to result memory environment <span class="arithmatex">\(\Delta'\)</span> assuming <span class="arithmatex">\(S\)</span> is terminating under <span class="arithmatex">\(\Delta\)</span>. Note that big step operational semantics for SIMP statement can only defines the behavior of terminating program configurations.</p>
+<p>We consider the following rules
+$$
+\begin{array}{rc}
+{\tt (bAssign)} &amp; \begin{array}{c}
+    \Delta \vdash E \Downarrow C
+    \ \hline
+    (\Delta, X = E) \Downarrow \Delta \oplus (X, C)
+    \end{array}
+\end{array}
+$$</p>
+<p>In case that the statement is an assignment, we evaluate the RHS expression to a constant value <span class="arithmatex">\(c\)</span> and update the memory environment.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (bIf1)} &amp; \begin{array}{c}
+    \Delta \vdash E \Downarrow true ~~~~~~
+    (\Delta, \overline{S_1}) \Downarrow \Delta_1
+    \\ \hline
+    (\Delta, if\ E\ \{ \overline{S_1} \}\ else\ \{ \overline{S_2} \} ) \Downarrow \Delta_1
+    \end{array}
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (bIf2)} &amp; \begin{array}{c}
+    \Delta \vdash E \Downarrow false ~~~~~~
+    (\Delta, \overline{S_2}) \Downarrow \Delta_2
+    \\ \hline
+    (\Delta, if\ E\ \{ \overline{S_1} \}\ else\ \{ \overline{S_2} \} ) \Downarrow \Delta_2
+    \end{array}
+\end{array}
+\]</div>
+<p>In case that the statement is an if-else statement, we evaluate <span class="arithmatex">\(\overline{S_1}\)</span> if the conditional expression is <span class="arithmatex">\(true\)</span>, otherwise evaluate <span class="arithmatex">\(\overline{S_2}\)</span>.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (bWhile1)} &amp; \begin{array}{c}
+    \Delta \vdash E \Downarrow true ~~~~~~
+    (\Delta, \overline{S}; while\ E\ \{ \overline{S} \}) \Downarrow \Delta'
+    \\ \hline
+    (\Delta, while\ E\ \{ \overline{S} \}) \Downarrow \Delta'
+    \end{array}
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (bWhile2)} &amp; \begin{array}{c}
+    \Delta \vdash E \Downarrow false
+    \\ \hline
+    (\Delta, while\ E\ \{ \overline{S} \}) \Downarrow \Delta
+    \end{array}
+\end{array}
+\]</div>
+<p>In case that the statment is a while loop. We evaluate the body followed by the while loop again when the loop condition expression is <span class="arithmatex">\(true\)</span>, otherwise, we exit the while loop and return the existing memory environment.</p>
+<div class="arithmatex">\[
+{\tt (bNop)} ~~~~ (\Delta, nop) \Downarrow \Delta
+\]</div>
+<p>In case that the statement is a <code>nop</code> statement, there is no change to the memory environment.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (bSeq)} &amp; \begin{array}{c}
+            (\Delta, S) \Downarrow \Delta' ~~~~ (\Delta', \overline{S}) \Downarrow \Delta''
+            \\ \hline
+            (\Delta, S \overline{S}) \Downarrow \Delta''
+            \end{array}
+\end{array}
+\]</div>
+<p>In case of a sequence of statement, we evaluate the leading statement to an updated environment and use the updated environment to evaluate the following statements.</p>
+<p>For example, the following derivation (tree) is the evaluate of our running example using the big step operational semantics. The reason of having a tree derivation as we are evaluating the SIMP program to the final result directly by evaluating its sub components recursively / inductively.</p>
+<pre><code class="language-python">                                   {(input,1),(x,1)} |- 0 ⇓ 0 (bConst)
+                                   ---------------------(bAssign)     [sub tree 1]
+                                   {(input,1), (x,1)}, 
+                                   s = 0; 
+{(input,1)} |- input ⇓ 1 (bVar)    ⇓ {(input,1), (x,1), (s,0)}      
+---------------- (bAssign)         -------------------------------------------(bSeq)
+{(input,1)},                       {(input,1), (x,1)},  
+x = input;                         s = 0;
+⇓ {(input,1), (x,1)}               c = 0;
+                                   while c &lt; x {
+                                   s = c + s;
+                                   c = c + 1;
+                                   }
+                                   return s; ⇓ {(input,1), (x,1), (s,0), (c,1)}
+---------------------------------------------------------------------------- (bSeq)
+{(input, 1)}, 
+x = input;
+s = 0;
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s; ⇓ {(input, 1), (x, 1), (s, 0), (c, 1)}
+</code></pre>
+<p>where sub derivation<code>[sub tree 1]</code> is as follows</p>
+<pre><code class="language-python">
+{(input,1), (x,1), (s,0)}              [sub tree 2]  -------------------- (bReturn)
+|- 0 ⇓ 0 (bConst)                                    {(input,1), (x,1), (s,0), (c,1)}, 
+                                                     return s; ⇓ 
+                                                     {(input,1), (x,1), (s,0), (c,1)}
+--------------------------(bAssign)   -------------------------------------- (bSeq)
+{(input,1), (x,1), (s,0)},            {(input,1), (x,1), (s,0), (c,0)},
+c = 0;                                while c &lt; x {s = c + s; c = c + 1;} 
+⇓                                     return s; ⇓ {(input,1), (x,1), (s,0), (c,1)}
+{(input,1),(x,1),(s,0),(c,0)}                    
+---------------------------------------------------------------------------- (bSeq)
+{(input,1), (x,1), (s,0)},
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+⇓ {(input,1), (x,1), (s,0), (c,1)}
+</code></pre>
+<p>where
+<code>[sub tree 2]</code> is</p>
+<pre><code class="language-python">
+{(input,1), (x,1), (s,0), (c,0)} 
+|- c ⇓ 0 (bVar)
+
+{(input,1), (x,1), (s,0), (c,0)} 
+|- x ⇓ 1 (bVar)
+
+0 &lt; 1  == true                         [sub tree 3]          [sub tree 4]
+-------------------------------- (bOp) ---------------------------------- (bSeq)
+{(input,1), (x,1), (s,0), (c,0)}       {(input,1), (x,1), (s,0), (c,0)},
+|- c &lt; x ⇓ true                         s = c + s; c = c + 1; 
+                                        while c &lt; x {s = c + s; c = c + 1;} ⇓
+                                        {(input,1), (x,1), (s,0), (c,1)}
+-----------------------------------------------------------------------  (bWhile1)
+{(input,1), (x,1), (s,0), (c,0)},
+while c &lt; x {s = c + s; c = c + 1;} ⇓ {(input,1), (x,1), (s,0), (c,1)}
+</code></pre>
+<p>where
+<code>[sub tree 3]</code> is</p>
+<pre><code class="language-python">{(input, 1), (x, 1), (s, 0), (c, 0)}
+|- c ⇓ 0 (bVar)
+
+{(input, 1), (x, 1), (s, 0), (c, 0)}
+|- s ⇓ 0 (bVar)
+
+c + s == 0
+------------------------------------ (bOp)
+{(input, 1), (x, 1), (s, 0), (c, 0)} 
+|- c + s ⇓ 0  
+------------------------------------- (bAssign)
+{(input, 1), (x, 1), (s, 0), (c, 0)},
+s = c + s; ⇓
+{(input, 1), (x, 1), (s, 0), (c, 0)}
+</code></pre>
+<p>where
+<code>[sub tree 4]</code> is</p>
+<pre><code class="language-python">{(input, 1), (x, 1), (s, 0), (c, 0)}
+|- c ⇓ 0 (bVar)
+
+{(input, 1), (x, 1), (s, 0), (c, 0)}
+|- 1 ⇓ 1 (bConst)
+
+c + 1 == 1
+------------------------------------ (bOp)
+{(input, 1), (x, 1), (s, 0), (c, 0)} 
+|- c + 1 ⇓ 1  
+-------------------------------------- (bAssign)
+{(input, 1), (x, 1), (s, 0), (c, 0)},
+c = c + 1; ⇓
+{(input, 1), (x, 1), (s, 0), (c, 1)}                [sub tree 5]
+--------------------------------------------------------------------- (bSeq)
+{(input, 1), (x, 1), (s, 0), (c, 0)},
+c = c + 1; 
+while c &lt; x {s = c + s; c = c + 1;} ⇓ {(input, 1), (x, 1), (s, 0), (c, 1)}
+</code></pre>
+<p>where
+<code>[sub tree 5]</code> is</p>
+<pre><code class="language-python">{(input, 1), (x, 1), (s, 0), (c, 1)} (bVar)
+|- c ⇓ 1 
+
+{(input, 1), (x, 1), (s, 0), (c, 1)} (bVar)
+|- x ⇓ 1 
+
+1 &lt; 1 == false
+------------------------------------ (bOp)
+{(input, 1), (x, 1), (s, 0), (c, 1)} 
+|- c &lt; x ⇓ false
+---------------------------------------------------- (bWhile2)
+{(input, 1), (x, 1), (s, 0), (c, 1)}, 
+while c &lt; x {s = c + s; c = c + 1;} ⇓
+{(input, 1), (x, 1), (s, 0), (c, 1)}
+</code></pre>
+<h3 id="quick-summary-small-step-vs-big-step-operational-semantics">Quick Summary: Small step vs Big Step operational semantics</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Small step operational semantics</th>
+<th>Big step operational semantics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mode</td>
+<td>one step of change at a time</td>
+<td>many steps of changes at a time</td>
+</tr>
+<tr>
+<td>derivation</td>
+<td>it is linear</td>
+<td>it is a tree</td>
+</tr>
+<tr>
+<td>cons</td>
+<td>it is slow-paced and lengthy, requires more rules</td>
+<td>it is a fast-forward version, requirews fewer rules</td>
+</tr>
+<tr>
+<td>pros</td>
+<td>it is expressive, supports non-terminiating program</td>
+<td>it assumes program is terminating</td>
+</tr>
+</tbody>
+</table>
+<h4 id="formal-results">Formal Results</h4>
+<p>We use <span class="arithmatex">\(\longrightarrow^*\)</span> to denote multiple steps of derivation with <span class="arithmatex">\(\longrightarrow\)</span>.</p>
+<h4 id="lemma-1-agreement-of-small-step-and-big-step-operational-semantics-of-simp">Lemma 1 (Agreement of Small Step and Big Step Operational Semantics of SIMP)</h4>
+<p>Let <span class="arithmatex">\(\overline{S}\)</span> be a SIMP program, <span class="arithmatex">\(\Delta\)</span> be a memory environment. Then <span class="arithmatex">\(\Delta, \overline{S} \Downarrow \Delta'\)</span> iff <span class="arithmatex">\((\Delta, \overline{S}) \longrightarrow^* (\Delta', return\ X)\)</span> for some <span class="arithmatex">\(X\)</span>.</p>
+<p>Proof of this lemma requires some knowledge which will be discussed in the upcoming classes.</p>
+<h2 id="operational-semantics-of-pseudo-assembly">Operational Semantics of Pseudo Assembly</h2>
+<p>Next we consider the operational semantics of pseudo assembly.</p>
+<p>Let's define the environments required for the rules.</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+(\tt PA\ Program) &amp; P &amp; \subseteq &amp; (l \times li)  \\
+(\tt PA\ Environment) &amp; L &amp; \subseteq &amp; (t \times c) \cup (r \times c)
+\end{array}
+\]</div>
+<p>We use <span class="arithmatex">\(P\)</span> to denote a PA program, which is a mapping from label to labeled instructions.
+We use <span class="arithmatex">\(L\)</span> to denote a memory environment which is a mapping from temp variable or register to constant values.</p>
+<h3 id="small-step-operational-semantics-of-pseudo-assembly">Small Step Operational Semantics of Pseudo Assembly</h3>
+<p>The dynamic semantics of the pseudo assembly program can be defined using a rule of shape <span class="arithmatex">\(P \vdash (L, li) \longrightarrow (L', li')\)</span>, which reads, given a PA program <span class="arithmatex">\(P\)</span>, the current program context <span class="arithmatex">\((L,li)\)</span> is evaluated to <span class="arithmatex">\((L', li')\)</span>. Note that we use a memory environment and program label instruction pair to denote a program context.</p>
+<div class="arithmatex">\[
+{\tt (pConst)}~~~P \vdash (L, l: d \leftarrow c) \longrightarrow (L \oplus (d,c), P(l+1))
+$$
+In the ${\tt (pConst)}$ rule, we evaluate an assignment instruction of which the RHS is a constant. We update the value of the LHS in the memory environment as $c$ and move on to the next instruction.
+$$
+{\tt (pRegister)} ~~~P \vdash (L, l: d \leftarrow r) \longrightarrow (L \oplus (d,L(r)), P(l+1))  
+\]</div>
+<p>$${\tt (pTempVar)} ~~~P \vdash (L, l: d \leftarrow t) \longrightarrow (L \oplus (d,L(t)), P(l+1))
+$$
+In the <span class="arithmatex">\({\tt (pRegister)}\)</span> and the <span class="arithmatex">\({\tt (pTempVar)}\)</span> rules, we evaluate an assignment instruction of which the RHS is a register (or a temp variable). We look up the value of the register (or the temp variable) from the memory environment and use it as the updated value of the LHS in the memory environment. We move on to the next label instruction.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (pOp)} &amp;  \begin{array}{c}
+        c_1 = L(s_1) ~~~ c_2 = L(s_2) ~~~ c_3 = c_1\ op\ c_2
+        \\ \hline
+        P \vdash (L, l: d \leftarrow s_1\ op\ s_2) \longrightarrow (L \oplus (d,c_3), P(l+1))  
+        \end{array}
+\end{array}
+\]</div>
+<p>The <span class="arithmatex">\({\tt (pOp)}\)</span> rule handles the case where the RHS of the assignment is a binary operation. We first look up the values of the operands from the memory environment. We then apply the binary operation to the values. The result will be used to update the value of the LHS in the memory environment.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (pIfn0)} &amp; \begin{array}{c}
+     L(s) = 0
+     \\ \hline
+     P \vdash (L, l: ifn\ s\ goto\ l') \longrightarrow (L, P(l'))
+     \end{array}
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (pIfnNot0)} &amp; \begin{array}{c}
+     L(s) \neq  0
+     \\ \hline
+     P \vdash (L, l: ifn\ s\ goto\ l') \longrightarrow (L, P(l+1))
+     \end{array}
+\end{array}
+\]</div>
+<p>The rules <span class="arithmatex">\({\tt (pIfn0)}\)</span> and <span class="arithmatex">\({\tt (pIfnNot0)}\)</span> deal with the conditional jump instruction. We first look up the conditional operand's value in the memory environment. If it is 0, we ignore the jump and move on to the next instruction, otherwiwse, we perform a jump but changing the program context to the target label instruction.</p>
+<div class="arithmatex">\[
+{\tt (pGoto)} ~~ P \vdash (L, l:goto\ l') \longrightarrow (L, P(l'))
+\]</div>
+<p>The rule <span class="arithmatex">\({\tt (pGoto)}\)</span> jumps to to the target label instruction.</p>
+<p>Note that there is no rule for <span class="arithmatex">\(ret\)</span> as the program execution will stop there.
+Further more, the set of rules does not mention the scenario in which the look up of a register (or a temp variable) in the environment fails. In these cases, the program exit with an error.</p>
+<p>For example, let <span class="arithmatex">\(P\)</span> be</p>
+<pre><code class="language-js">1: x &lt;- input
+2: s &lt;- 0
+3: c &lt;- 0
+4: t &lt;- c &lt; x 
+5: ifn t goto 9
+6: s &lt;- c + s
+7: c &lt;- c + 1
+8: goto 4
+9: rret &lt;- s
+10: ret
+</code></pre>
+<p>and <span class="arithmatex">\(input = 1\)</span>.</p>
+<p>We have the following derivation</p>
+<pre><code class="language-java">P |- {(input,1)}, 1: x &lt;- input ---&gt; # (pTempVar)
+P |- {(input,1), (x,1)}, 2: s &lt;- 0 ---&gt; # (pConst)
+P |- {(input,1), (x,1), (s,0)}, 3: c &lt;- 0 ---&gt; # (pConst)
+P |- {(input,1), (x,1), (s,0), (c,0)}, 4: t &lt;- c &lt; x ---&gt; # (pOp)
+P |- {(input,1), (x,1), (s,0), (c,0), (t,1)}, 5: ifn t goto 9 ---&gt; # (pIfn0)
+P |- {(input,1), (x,1), (s,0), (c,0), (t,1)}, 6: s &lt;- c + s ---&gt; # (pOp)
+P |- {(input,1), (x,1), (s,0), (c,0), (t,1)}, 7: c &lt;- c + 1 ---&gt; # (pOp)
+P |- {(input,1), (x,1), (s,0), (c,1), (t,1)}, 8: goto 4 ---&gt; # (pGoto)
+P |- {(input,1), (x,1), (s,0), (c,1), (t,1)}, 4: t &lt;- c &lt; x ---&gt; # (pOp)
+P |- {(input,1), (x,1), (s,0), (c,1), (t,0)}, 5: ifn t goto 9 ---&gt; # (pIfnNot0)
+P |- {(input,1), (x,1), (s,0), (c,1), (t,0)}, 9: rret &lt;- s ---&gt; # (pTempVar)
+P |- {(input,1), (x,1), (s,0), (c,1), (t,0), (rret, 0)}, 10: ret
+</code></pre>
+<h3 id="formal-results_1">Formal Results</h3>
+<h4 id="definition-consistency-of-the-memory-environments">Definition: Consistency of the memory environments</h4>
+<p>Let <span class="arithmatex">\(\Delta\)</span> be a SIMP memory environment and <span class="arithmatex">\(L\)</span> be a pseudo assembly memory environment.
+We say <span class="arithmatex">\(\Delta\)</span> is consistent with <span class="arithmatex">\(L\)</span> (written <span class="arithmatex">\(\Delta \Vdash L\)</span>), iff</p>
+<ol>
+<li><span class="arithmatex">\(\forall (x,v) \in \Delta\)</span>, <span class="arithmatex">\((x,conv(v)) \in L\)</span>, and</li>
+<li><span class="arithmatex">\(\forall (y,u) \in L\)</span>, <span class="arithmatex">\((y, v) \in \Delta\)</span> where <span class="arithmatex">\(u=conv(v)\)</span>.</li>
+</ol>
+<h4 id="lemma-correctness-of-the-maximal-munch-algorithm">Lemma: Correctness of the Maximal Munch Algorithm</h4>
+<p>Let <span class="arithmatex">\(S\)</span> and <span class="arithmatex">\(S'\)</span> be SIMP program statements.
+Let <span class="arithmatex">\(\Delta\)</span> and <span class="arithmatex">\(\Delta'\)</span> be SIMP memory environments such that <span class="arithmatex">\((\Delta, S) \longrightarrow (\Delta', S')\)</span>.
+Let <span class="arithmatex">\(P\)</span> be a pseudo assembly program such that <span class="arithmatex">\(G_s(S) = P\)</span>.
+Let <span class="arithmatex">\(L\)</span> and <span class="arithmatex">\(L'\)</span> be pseudo assembly memory enviornments.
+Let <span class="arithmatex">\(\Delta \Vdash L\)</span>.
+Then we have <span class="arithmatex">\(P \vdash (L, l:i) \longrightarrow (L', l':i')\)</span> and <span class="arithmatex">\(\Delta' \Vdash L'\)</span></p>
+<h5 id="proof">Proof</h5>
+<p>Since the <span class="arithmatex">\(S\)</span> could be a non-terminating program, the derivation via small step operational semantics could be infinite. We need a co-inductive proof, which is beyond the scope of this module. We will only discuss about this when we have time.</p>
+<h3 id="what-about-big-step-operational-semantics-of-pseudo-assembly">What about big step operational semantics of Pseudo Assembly?</h3>
+<p>As Pseudo Assembly is a flatten language with goto statement, there is no nesting of statement or expression. There is no much value in defining the big step operatnal semantics, i.e. there is no way to "fast-forward" a sub statement / a sub expression per se.</p>
+<p>If you are interested in details of big step operational semantics, you may refer to this paper, which presented the operational and denotational semantics with a language with GOTO (more structures than our Pseudo Assembly.)</p>
+<pre><code>https://link.springer.com/article/10.1007/BF00264536
+</code></pre>
+<h2 id="denotational-semantics-optional-materials">Denotational Semantics (Optional Materials)</h2>
+<p>Next we briefly discuss another form of dynamic semantics specification.
+Denotational Semantics aims to provide a meaning to a program.
+The "meaning" here is to find the result returned by the program.
+Now we may argue that is it the same as the big step operational semantics?
+There is some difference between the denotational semantics and big step operational semantics. We will defer the discussion and comparison towards the end of this unit.</p>
+<p>In denotational semantics, the "meaning" of a program is given by a set of semantic functions.
+These functions are mapping program objects from the syntactic domain to <em>math</em> objects in the semantic domain.</p>
+<h3 id="syntactic-domains">Syntactic Domains</h3>
+<p>In many cases, the syntactic domains are defined by the grammar rules.</p>
+<p>For SIMP program, we have the following syntactic domains.</p>
+<ol>
+<li><span class="arithmatex">\(S\)</span> denotes the domain of all valid single statement</li>
+<li><span class="arithmatex">\(E\)</span> denotes the domain of all valid expressions</li>
+<li><span class="arithmatex">\(\overline{S}\)</span> denotes the domain of all valid sequence statements</li>
+<li><span class="arithmatex">\(OP\)</span> denotes the domain of all valid operators.</li>
+<li><span class="arithmatex">\(C\)</span> denotes the domain of all constant values.</li>
+<li><span class="arithmatex">\(X\)</span> denotes the domain of all variables.</li>
+</ol>
+<h3 id="semantic-domains">Semantic Domains</h3>
+<ol>
+<li><span class="arithmatex">\(Int\)</span> denotes the set of all integers values</li>
+<li><span class="arithmatex">\(Bool\)</span> denotes the set of <span class="arithmatex">\(\{true, false\}\)</span></li>
+<li>Given that <span class="arithmatex">\(D_1\)</span> and <span class="arithmatex">\(D_2\)</span> are domains, <span class="arithmatex">\(D_1 \times D_2\)</span> denotes the cartesian product of the two.</li>
+<li>Given that <span class="arithmatex">\(D_1\)</span> and <span class="arithmatex">\(D_2\)</span> are domains, <span class="arithmatex">\(D_1 \cup D_2\)</span> denotes the union and <span class="arithmatex">\(D_1 \cap D_2\)</span> denotes the intersection.</li>
+<li>Given that <span class="arithmatex">\(D_1\)</span> and <span class="arithmatex">\(D_2\)</span> are domains, <span class="arithmatex">\(D_1 \rightarrow D_2\)</span> denotes a functional mapping from domain <span class="arithmatex">\(D_1\)</span> to domain <span class="arithmatex">\(D_2\)</span>.<ul>
+<li>Note that <span class="arithmatex">\(D_1 \rightarrow D_2 \rightarrow D_3\)</span> is intepreted as <span class="arithmatex">\(D_1 \rightarrow (D_2 \rightarrow D_3)\)</span>.</li>
+</ul>
+</li>
+<li>Given that <span class="arithmatex">\(D\)</span> is a domain, <span class="arithmatex">\({\cal P}(D)\)</span> denots the power set of <span class="arithmatex">\(D\)</span>.</li>
+</ol>
+<h3 id="denotational-semantics-for-simp-expressions">Denotational Semantics for SIMP expressions</h3>
+<p>The denotational semantics for the SIMP expression is defined by the following semantic functions.</p>
+<p>Let <span class="arithmatex">\(\Sigma = {\cal P} (X \times (Int\cup Bool))\)</span></p>
+<div class="arithmatex">\[
+\begin{array}{lll}
+{\mathbb E}\llbracket \cdot \rrbracket\  :\  E  &amp;\rightarrow&amp;\  \Sigma \rightarrow (Int \cup Bool) \\
+{\mathbb E}\llbracket X \rrbracket &amp; = &amp; \lambda\sigma.\sigma(X) \\
+{\mathbb E}\llbracket c \rrbracket &amp; = &amp; \lambda\sigma. c \\
+{\mathbb E}\llbracket E_1\ OP\ E_2 \rrbracket &amp; = &amp;\lambda\sigma.  {\mathbb E}\llbracket E_1\rrbracket\sigma\ \llbracket OP \rrbracket\  {\mathbb E}\llbracket E_2\rrbracket\sigma\\\
+\end{array}
+\]</div>
+<p>The signature of the semantic function indicates that we map a SIMP expression into a function that takes a memory environment and returns a contant value.</p>
+<p>Implicitly, we assume that there exists a builtin semantic function that maps operator symbols to the (actual) semantic operators, i.e., <span class="arithmatex">\(\llbracket + \rrbracket\)</span> gives us the sum operation among two integers.  Sometimes we omit the parenthesis for function application when there is no ambiguity, e.g. <span class="arithmatex">\({\mathbb E}\llbracket E\rrbracket\sigma\)</span> is the short hand for
+<span class="arithmatex">\(({\mathbb E}\llbracket E\rrbracket)(\sigma)\)</span></p>
+<p>As we observe, <span class="arithmatex">\({\mathbb E}\llbracket \cdot \rrbracket\)</span> takes an object from the expression syntactic domain and a memory store object from the domain of <span class="arithmatex">\(\Sigma\)</span>, returns a value frmo the union of <span class="arithmatex">\(Int\)</span> and <span class="arithmatex">\(Bool\)</span> semantic domains.</p>
+<h3 id="denotational-semantics-for-simp-statements">Denotational Semantics for SIMP statements</h3>
+<p>To define the denotational semantics, we need some extra preparation, in order to support non-terminating programs.</p>
+<p>Let <span class="arithmatex">\(\bot\)</span> be a special element, called <em>undefined</em>, that denotes failure or divergence.
+Let <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(g\)</span> be functions, we define
+$$
+\begin{array}{rcl}
+f \circ_\bot g &amp; = &amp; \lambda \sigma. \left [ \begin{array}{cc}
+                  \bot &amp; g(\sigma) = \bot \
+                  f(g(\sigma)) &amp; otherwise
+                 \end{array} \right .
+\end{array}
+$$
+which is a function composition that propogates <span class="arithmatex">\(\bot\)</span> if present.
+Now we define the semantic function for SIMP statements.
+$$
+\begin{array}{lll}
+{\mathbb S}\llbracket \cdot \rrbracket :   \overline{S}  &amp; \rightarrow\ &amp; \Sigma \ \rightarrow \ \Sigma \cup { \bot } \
+{\mathbb S} \llbracket  nop \rrbracket&amp; = &amp; \lambda\sigma. \sigma \
+{\mathbb S} \llbracket return\ X \rrbracket&amp; = &amp; \lambda\sigma. \sigma \
+{\mathbb S} \llbracket  X = E \rrbracket&amp; = &amp; \lambda\sigma. \sigma \oplus (X, {\mathbb E}\llbracket E \rrbracket\sigma) \
+{\mathbb S} \llbracket S \overline{S} \rrbracket&amp; = &amp; {\mathbb S} \llbracket \overline{S} \rrbracket \circ_\bot {\mathbb S} \llbracket S \rrbracket\
+{\mathbb S} \llbracket if \ E\ {\overline{S_1}} \ else\ {\overline{S_2} } \rrbracket&amp; = &amp; \lambda\sigma. \left [ \begin{array}{cc}
+                    {\mathbb S} \llbracket \overline{S_1} \rrbracket\sigma  &amp; {\mathbb E}\llbracket E \rrbracket\sigma = true \
+                    {\mathbb S} \llbracket \overline{S_2} \rrbracket\sigma &amp; {\mathbb E}\llbracket E \rrbracket\sigma = false \
+                \end{array} \right . \
+{\mathbb S} \llbracket while \ E\ {\overline{S}} \rrbracket&amp; = &amp; fix(F) \
+ {\tt where}\ &amp;  &amp; F= \lambda g.\lambda\sigma. \left [ \begin{array}{cc}
+                    (g \circ_\bot {\mathbb S} \llbracket \overline{S} \rrbracket)(\sigma)  &amp; {\mathbb E}\llbracket E \rrbracket\sigma = true \
+                    \sigma &amp; {\mathbb E}\llbracket E \rrbracket\sigma = false \
+                \end{array} \right . \
+\end{array}
+$$</p>
+<p>The signature of the semantic function indicates that we map a SIMP statement into a function that takes a memory environment and returns another memory environment or divergence.</p>
+<p>In case of <span class="arithmatex">\(nop\)</span> and return statement, the semantic function returns an identiy function.
+In case of an assignment, the semantic function takes an memory environment object and update the binding of <span class="arithmatex">\(X\)</span> to the meaning of <span class="arithmatex">\(E\)</span>.
+In case of sequence statements, the semantic function returns a <span class="arithmatex">\(\bot\)</span>-function composition of the semantic function of the leading statement and the semantic function of the the trailing statements.
+In case of if-else statement, the semantic function returns the semantics of the then or the else branch statement depending on the meaning of the condition expression.
+In case of while statement, the semantic function returns a fixed point function. This is due to the fact that the underlying domain theory framework we are using does not support recursion. Hence a fixed point operator <span class="arithmatex">\(fix\)</span> is used, which is kind of like recursion, (as we learnd in lambda caluclus), and it is more expresive as it gives a fixed term notiation for a sequence of infinitely many function objects applications. To help our understanding, we give a <strong>cheating version</strong> as if recursive function is supported in the underlying domain theory framework and we are allow to refer to a function application as a name function, we would have</p>
+<p>$$
+\begin{array}{lll}
+{\mathbb S} \llbracket while \ E\ {\overline{S}} \rrbracket&amp; = &amp; \lambda\sigma. \left { \begin{array}{cc}
+                    ({\mathbb S} \llbracket while \ E\ {\overline{S}}\rrbracket  \circ_\bot {\mathbb S} \llbracket \overline{S} \rrbracket)(\sigma)  &amp; {\mathbb E}\llbracket E \rrbracket\sigma = true \
+                    \sigma &amp; {\mathbb E}\llbracket E \rrbracket\sigma = false \
+                \end{array} \right . \
+\end{array}
+$$
+which means the function <span class="arithmatex">\(g\)</span> in the earlier version is a recursive reference to <span class="arithmatex">\({\mathbb S} \llbracket while \ E\ \{\overline{S}\} \rrbracket\)</span></p>
+<p>For example, let <span class="arithmatex">\(\sigma = \{ (input, 1)\}\)</span></p>
+<div class="arithmatex">\[
+\begin{array}{ll}
+&amp; {\mathbb S} \llbracket x=input; s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma \\
+= &amp; ({\mathbb S} \llbracket s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket x=input \rrbracket) (\sigma) \\
+= &amp; {\mathbb S} \llbracket s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma_1 \\
+= &amp; ({\mathbb S} \llbracket c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket s=0 \rrbracket) (\sigma_1) \\
+= &amp; {\mathbb S} \llbracket c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma_2 \\
+= &amp; ({\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket c=0 \rrbracket) (\sigma_2) \\
+= &amp; {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma_3 \\
+= &amp; ({\mathbb S} \llbracket return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\} \rrbracket) (\sigma_3) \\
+= &amp; ({\mathbb S} \llbracket return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\} \rrbracket \circ_\bot{\mathbb S} \llbracket s = c + s; c = c + 1; \rrbracket) (\sigma_3) \\
+= &amp; ({\mathbb S} \llbracket return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\} \rrbracket)(\sigma_4) \\
+= &amp; {\mathbb S} \llbracket return\ s; \rrbracket\sigma_4 \\
+= &amp; \sigma_4
+\end{array}
+\]</div>
+<p>where
+$$
+\begin{array}{l}
+\sigma_1 = \sigma \oplus (x,1) = { (input,1), (x,1) } \
+\sigma_2 = \sigma_1 \oplus (s,0)  = { (input,1), (x,1), (s,0) } \
+\sigma_3 = \sigma_2 \oplus (c,0)  = { (input,1), (x,1), (s,0), (c,0) }\
+\sigma_4 = \sigma_3 \oplus (s,0) \oplus (c,1)  = { (input,1), (x,1), (s,0), (c,1) }\
+\end{array}
+$$</p>
+<p>Let's consider another example of a non-terminating program, we can't use the <em>cheating version</em> here as it would gives the infinite sequence of function compositions.
+Let <span class="arithmatex">\(\sigma = \{(input, true)\}\)</span></p>
+<div class="arithmatex">\[
+\begin{array}{ll}
+&amp; {\mathbb S} \llbracket while\ input \{nop;\}return\ input; \rrbracket \sigma \\
+= &amp; fix(F) \sigma \\
+= &amp; \bot
+\end{array}
+\]</div>
+<p>where</p>
+<div class="arithmatex">\[
+\begin{array}{l}
+F = \lambda g.\lambda\sigma. \left [ \begin{array}{cc}
+                    (g \circ_\bot {\mathbb S} \llbracket nop \rrbracket)(\sigma)  &amp; {\mathbb E}\llbracket input \rrbracket\sigma = true \\
+                    \sigma &amp; {\mathbb E}\llbracket input \rrbracket\sigma = false \\
+                \end{array} \right . \\
+\end{array}
+\]</div>
+<p>Since <span class="arithmatex">\({\mathbb E}\llbracket input \rrbracket\sigma\)</span> is always <span class="arithmatex">\(true\)</span>,</p>
+<div class="arithmatex">\[
+F = \lambda g.\lambda\sigma.(g \circ_\bot {\mathbb S} \llbracket nop \rrbracket)(\sigma)  
+\]</div>
+<p>With some math proof, we find that <span class="arithmatex">\(fix(F)\)</span> is function of type <span class="arithmatex">\(\Sigma \rightarrow \bot\)</span>. We won't be able to discuss the proof until we look into lattice theory in the upcoming classes.</p>
+<p>In simple term, using the <span class="arithmatex">\(fix\)</span> operator to define the while statement denotational semantics allows us to "collapse" the infinite sequence of function composition/application into a fixed point, which is a non-terminating function.</p>
+<h3 id="denotational-semantics-vs-big-step-operational-semantics-vs-small-step-semantics">Denotational Semantics vs Big Step operational Semantics vs Small Step Semantics</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>support non-terminating programs</th>
+<th>don't support non-terminating programs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>focused on the step by step derivation</td>
+<td>Small Step Operational Semantics</td>
+<td></td>
+</tr>
+<tr>
+<td>focused on the returned results</td>
+<td>Denotational Semantics</td>
+<td>Big Step Operational Semantics</td>
+</tr>
+</tbody>
+</table>
+<p>Denotational Semantics is often used characterizing programming language model in a compositional way. It allows us to relates syntax objects to semantic objects. For example, if we want to argue that two languages are equivalent, we can map their syntax objects into the same semantic objects. We could also use denotational semantics to reason about concurrency.</p>
+<h4 id="extra-readings-for-denotational-semantics">Extra readings for denotational semantics</h4>
+<pre><code>https://web.eecs.umich.edu/~weimerw/2008-615/lectures/weimer-615-07.pdf
+https://homepage.divms.uiowa.edu/~slonnegr/plf/Book/Chapter9.pdf
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../javascripts/mathjax.js"></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

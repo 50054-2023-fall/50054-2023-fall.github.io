@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Syntax Analysis 2 - Compiler Design and Program Analysis 50.054</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="../..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-syntax-analysis-2">50.054 - Syntax Analysis 2</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcome">Learning Outcome</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#summary">Summary</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-syntax-analysis-2">50.054 - Syntax Analysis 2</h1>
+<h2 id="learning-outcome">Learning Outcome</h2>
+<p>By the end of this lesson, you should be able to</p>
+<ol>
+<li>Construct a <code>LR(0)</code> parsing table</li>
+<li>Explain shift-reduce conflict</li>
+<li>Construct a <code>SLR</code> parsing table</li>
+</ol>
+<h3 id="bottom-up-parsing">Bottom-up parsing</h3>
+<p>An issue with <code>LL(k)</code> parsing is that we always need to make sure that we can pick the correct production rule by examining the first <code>k</code> tokens from the input. There is always
+a limit of how many tokens we should look ahead to pick a particular production rule without relying on backtracking.</p>
+<p>What if we consider multiple production rules when "consuming" input tokens and decide
+which one to pick when we have enough information? Answering this question leads to
+bottom-up parsing.</p>
+<p><code>LR(k)</code> stands for left-to-right, right-most derivation with <code>k</code> lookahead tokens.</p>
+<p>In essence, <code>LR(k)</code> relies on a parsing table and a stack to decide which production rule to be applied given the current (partial) input. A stack is storing the symbols have been consumed so far, each element in the stack also stores the state of the parser.</p>
+<p>To understand <code>LR(k)</code> parsing, let's assume that we are given the parsing table. (We will consider how to construct the parsing table shortly.)</p>
+<p>Let's recall Grammar 6</p>
+<pre><code>&lt;&lt;Grammar 6&gt;&gt;
+1 S' ::= E$ 
+2 E ::= TE'
+3 E' ::= + TE'
+4 E' ::= epsilon
+5 T ::= i
+</code></pre>
+<p>We added number to each production rule, and we introduce a top level production rule <code>S' ::= E$</code> where <code>$</code> denotes the end of input symbol.</p>
+<p>Let's consider the following parsing table for Grammar 6.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>+</th>
+<th>i</th>
+<th>$</th>
+<th>S'</th>
+<th>E</th>
+<th>E'</th>
+<th>T</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td></td>
+<td>shift 13</td>
+<td></td>
+<td></td>
+<td>goto 12</td>
+<td></td>
+<td>goto 11</td>
+</tr>
+<tr>
+<td>11</td>
+<td>shift 14</td>
+<td></td>
+<td>reduce 4</td>
+<td></td>
+<td></td>
+<td>goto 17</td>
+<td></td>
+</tr>
+<tr>
+<td>12</td>
+<td></td>
+<td></td>
+<td>accept</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>13</td>
+<td>reduce 5</td>
+<td></td>
+<td>reduce 5</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>14</td>
+<td></td>
+<td>shift 13</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>goto 15</td>
+</tr>
+<tr>
+<td>15</td>
+<td>shift 14</td>
+<td></td>
+<td>reduce 4</td>
+<td></td>
+<td></td>
+<td>goto 16</td>
+<td></td>
+</tr>
+<tr>
+<td>16</td>
+<td></td>
+<td></td>
+<td>reduce 3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>17</td>
+<td></td>
+<td></td>
+<td>reduce 2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Each cell in the above table is indexed by a symbol of the grammar, and a state.
+To avoid confusion with the production rule IDs,  we assume that state IDs are having 2 digits, and state <code>10</code> is the starting state. In each cell, we find a set of parsing actions.</p>
+<ol>
+<li><code>shift s</code> where <code>s</code> dentes a state ID. Given <code>shift s</code> in a cell (<code>s'</code>, <code>t</code>), we change the parser state from <code>s'</code> to <code>s</code> and consume the leading token <code>t</code> from the input and store it in the stack.</li>
+<li><code>accept</code>. Given <code>accept</code> found in a cell (<code>s</code>, <code>$</code>), the parsing is completed successfully.</li>
+<li><code>goto s</code> where <code>s</code> denotes a state ID. Given <code>goto s</code> in a cell (<code>s'</code>, <code>t</code>), we change the parser's state to <code>s</code>.</li>
+<li><code>reduce p</code> where <code>p</code> denotes a production rule ID. Given <code>reduce p</code> in a cell (<code>s</code>, <code>t</code>), lookup production rule <code>LHS::=RHS</code> from the grammar by <code>p</code>. We pop the items from top of the stack by reversing <code>RHS</code>. Given the state of the current top element of the stack, let's say <code>s'</code>, we lookup the goto action in cell (<code>s'</code>, <code>LHS</code>) and push <code>LHS</code> to the stack and perform the goto action.</li>
+</ol>
+<p>Consider the parsing the input <code>1+2+3</code></p>
+<table>
+<thead>
+<tr>
+<th>stack</th>
+<th>input</th>
+<th>action</th>
+<th>rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(10)</td>
+<td>1+2+3$</td>
+<td>shift 13</td>
+<td></td>
+</tr>
+<tr>
+<td>(10) i(13)</td>
+<td>+2+3$</td>
+<td>reduce 5</td>
+<td>T::=i</td>
+</tr>
+<tr>
+<td>(10) T(11)</td>
+<td>+2+3$</td>
+<td>shift 14</td>
+<td></td>
+</tr>
+<tr>
+<td>(10) T(11) +(14)</td>
+<td>2+3$</td>
+<td>shift 13</td>
+<td></td>
+</tr>
+<tr>
+<td>(10) T(11) +(14) i(13)</td>
+<td>+3$</td>
+<td>reduce 5</td>
+<td>T::=i</td>
+</tr>
+<tr>
+<td>(10) T(11) +(14) T(15)</td>
+<td>+3$</td>
+<td>shift 14</td>
+<td></td>
+</tr>
+<tr>
+<td>(10) T(11) +(14) T(15) +(14)</td>
+<td>3$</td>
+<td>shift 13</td>
+<td></td>
+</tr>
+<tr>
+<td>(10) T(11) +(14) T(15) +(14) i(13)</td>
+<td>$</td>
+<td>reduce 5</td>
+<td>T::=i</td>
+</tr>
+<tr>
+<td>(10) T(11) +(14) T(15) +(14) T(15)</td>
+<td>$</td>
+<td>reduce 4</td>
+<td>E'::=epsilon</td>
+</tr>
+<tr>
+<td>(10) T(11) +(14) T(15) +(14) T(15) E' (16)</td>
+<td>$</td>
+<td>reduce 3</td>
+<td>E'::=+TE'</td>
+</tr>
+<tr>
+<td>(10) T(11) +(14) T(15) E'(16)</td>
+<td>$</td>
+<td>reduce 3</td>
+<td>E'::=+TE'</td>
+</tr>
+<tr>
+<td>(10) T(11) E'(17)</td>
+<td>$</td>
+<td>reduce 2</td>
+<td>E::=TE'</td>
+</tr>
+<tr>
+<td>(10) E(12)</td>
+<td>$</td>
+<td>accept</td>
+<td>S'::=E$</td>
+</tr>
+</tbody>
+</table>
+<p>We start with state (10) in the stack.</p>
+<ol>
+<li>Given the first token from the input is <code>1</code> (i.e. an <code>i</code> token), we look up the parsing table and find the <code>shift 13</code> action in cell (<code>10</code>, <code>i</code>). By executing this action, we push <code>i(13)</code> in the stack.</li>
+<li>The next input is <code>+</code>. Given the current state is (13), we apply the smae strategy to find action <code>reduce 5</code> in cell (<code>13</code>, <code>+</code>). Recall that the production rule with id 5 is <code>T::=i</code>, we pop the <code>i(13)</code> from the stack, and check for the correspondent action in cell (<code>10</code>, <code>T</code>), we find <code>goto 11</code>. Hence we push <code>T(11)</code> into the stack.</li>
+</ol>
+<p>We follow the remaining steps to parse the input when we meet the accept action.</p>
+<p>One interesting observation is that the order of the rules found in the <code>rule</code> column is the reverse order of the list of rules we used in <code>LL(k)</code> parsing.</p>
+<p>Next we consider how to construct the parsing tables. It turns out that there are multiple ways of construct the parsing tables for <code>LR(k)</code> grammars.</p>
+<h3 id="lr0-parsing">LR(0) Parsing</h3>
+<p>We first consider the simplest parsing table where we ignore the leading token from the input, <code>LR(0)</code>.</p>
+<p>The main idea is that the actions (which define the change and update of the state and stack) are output based on the current state and the current stack. If we recall that this is a form of state machine.</p>
+<p>From this point onwards, we use pseudo Scala syntax illustrate the algorithm behind the parsing table construction.</p>
+<p>Let <code>.</code> denote a meta symbol which indicate the current parsing context in a production rule.</p>
+<p>For instance for production rule 3 <code>E' ::= +TE'</code>, we have four possible contexts</p>
+<ul>
+<li><code>E' ::= .+TE'</code></li>
+<li><code>E' ::= +.TE'</code></li>
+<li><code>E' ::= +T.E'</code></li>
+<li><code>E' ::= +TE'.</code></li>
+</ul>
+<p>We call each of these possible contexts an <code>Item</code>.</p>
+<p>We define <code>Items</code> to be a set of <code>Item</code>s, <code>Grammar</code> to be a set of production rules (whose definition is omitted, we use the syntax
+<code>LHS::=RHS</code> directly in the pseudo-code.)</p>
+<pre><code class="language-scala">type Items = Set[Item]
+type Grammar = Set[Prod]
+</code></pre>
+<p>We consider the following operations.</p>
+<pre><code class="language-scala">def closure(I:Items)(G:Grammar):Items = { 
+  val newItems = for {
+    (N ::= alpha . X beta) &lt;- I
+    (X ::= gamma)          &lt;- G
+  } yield ( X::= . gamma ).union(
+    for {
+      (N ::= . epsilon ) &lt;- I
+    } yield ( N::= epsilon .)
+  )
+  if (newItems.forall(newItem =&gt; I.contains(newItem)))
+  { I }
+  else { closure(I.union(newItems))(G)}
+
+def goto(I:Items)(G:Grammar)(sym:Symbol):Items = {
+  val J = for {
+    (N ::= alpha . X beta) &lt;- I
+  } yield (N ::= alpha X . beta)
+  closure(J)(G)
+}
+</code></pre>
+<p>Function <code>closure</code> takes an item set <code>I</code> and a grammar then returns the closure of <code>I</code>. For each item of shape <code>N::=alpha . X beta</code> in <code>I</code>, we look for the correspondent production rule <code>X ::= gamma</code> in <code>G</code> if <code>X</code> is a non-terminal, add <code>X::= . gamma</code> to the new item sets if it is not yet included in <code>I</code>.</p>
+<p>Noe that Scala by default does not support pattern such as <code>(N ::= alpha . X beta)</code> and <code>(X::= gamma)</code>. In this section, let's pretend that these patterns are allowed in Scala so that we can explain the algorithm in Scala style pseudo-code.</p>
+<p>Function <code>goto</code> takes an item set <code>I</code> and searches for item inside of shape
+<code>N::= alpha . X beta</code> then add <code>N::=alpha X. beta</code> as the next set <code>J</code>. We compute the closure of <code>J</code> and return it as result.</p>
+<pre><code class="language-scala">type State = Items
+type Transition = (State, Symbol, State)
+case class StateMachine(states:Set[State], transitions:Set[Transition], accepts:Set[State]) 
+
+
+def buildSM(init:State)(G:Grammar):StateMachine = { 
+  def step1(states:Set[State])(trans:Set[Transition]):(Set[State], Set[Transition]) = { // compute all states and transitions
+    val newStateTrans = for {
+      I                      &lt;- states
+      (A ::= alpha . X beta) &lt;- I 
+      J                      &lt;- pure(goto(I)(G)(X))
+    } yield (J, (I,X,J))
+    if newStateTrans.forall( st =&gt; st match {
+      case (new_state, _) =&gt; states.contains(new_state)
+    }) { (states, trans) }
+    else {
+      val newStates = newStateTrans.map( x =&gt; x._1) 
+      val newTrans  = newStateTrans.map( x =&gt; x._2) 
+      step1(states.union(newStates))(trans.union(newTrans))
+      }
+  }
+  def step2(states:Set[State]):Set[State] = { // compute all final states
+    states.filter( I =&gt; I.exists( item =&gt; item match {
+      case (N ::= alpha . $) =&gt; true 
+      case _ =&gt; false
+    }))
+  }
+  step1(Set(init))(Set()) match {
+    case (states, trans) =&gt; {
+      val finals = step2(states)
+      StateMachine(states, trans, finals)
+    }
+  }
+}
+</code></pre>
+<p>Function <code>buildSM</code> consists of two steps. In <code>step1</code> we start with the initial state <code>init</code> and compute all possible states and transitions by applying <code>goto</code>. In <code>step2</code>, we compute all final states.</p>
+<p>By applying <code>buildSM</code> to Grammar 6 yields the following state diagram.</p>
+<div class="mermaid">
+graph
+  State10["State10 &lt;br/&gt; S'::=.E$ &lt;br/&gt; E::=.TE' &lt;br/&gt; T::=i "]--T--&gt;State11["State11 &lt;br/&gt; E::=T.E' &lt;br/&gt; E'::=+TE' &lt;br/&gt; E'::= . epsilon &lt;br/&gt; E'::= epsilon."]
+  State10--E--&gt;State12["State12 &lt;br/&gt; S'::=E.$"]
+  State10--i--&gt;State13["State13 &lt;br/&gt; T::=i."]
+  State11--+--&gt;State14["State14 &lt;br/&gt; E'::= +.TE' &lt;br/&gt; T::=.i"]
+  State11--E'--&gt;State17["State17 &lt;br/&gt; S'::=E.$"]
+  State14--i--&gt;State13
+  State14--T--&gt;State15["State15 &lt;br/&gt; E'::= +T.E' &lt;br/&gt; E'::=.+TE' &lt;br/&gt; E'::=.epsilon &lt;br/&gt; E'::=epsilon . "]
+  State15--+--&gt;State14
+  State15--E'--&gt;State16["State16 &lt;br/&gt; E'::=+TE'."]
+</div>
+<pre><code class="language-scala">def reduce(states:List[State]):List[(Items, Prod)] = {
+  states.foldLeft(List())((accI:(List[(Items,Prod)], Items)) =&gt; accI match {
+    case (acc,I) =&gt; I.toList.foldLeft(acc)( ai:(List[(Items,Prod)], Item)) =&gt; ai match {
+      case (a, ( N::= alpha .)) =&gt; a.append(List((I, N::=alpha)))
+      case (a, _) =&gt; a 
+    } 
+  }
+}
+</code></pre>
+<p>Function <code>reduce</code> takes a list of states and search for item set that contains an item of shape <code>N::= alpha .</code>.</p>
+<pre><code class="language-scala">enum Action {
+  case Shift(i:State)
+  case Reduce(p:Prod)
+  case Accept
+  case Goto(i:State)
+}
+
+def ptable(G:Grammar)(prod:Prod):List[(State, Symbol, Action)] = prod match {
+  case (S::= X$) =&gt; {
+    val init = Set(closure(Set(S ::=.X$))(G))
+    buildSM(init)(G) match {
+      case StateMachine(states, trans, finals) =&gt; {
+        val shifts  = for {
+          (I, x, J) &lt;- trans
+          if isTerminal(x)
+        } yield (I, x, Shift(J))
+        val gotos   = for {
+          (I, x, J) &lt;- trans
+          if !isTerminal(x)
+          yield (I, x, Goto(J)))
+        }
+        val reduces = for {
+          (I, N::=alpha) &lt;- reduce(states)
+          x &lt;- allTerminals(G)
+        } yield (I, x, Reduce(N::=alpha))
+        val accepts = for {
+          I &lt;- finals
+        } yield (I, $, Accept)
+        shifts ++ gotos ++ reduces ++ accepts
+      }
+    }
+  } 
+}
+</code></pre>
+<p>Function <code>ptable</code> computes the <code>LR(0)</code> parsing table by making use of the functions defined earlier.</p>
+<p>Applying <code>ptable</code> to Grammar 6 yields</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>+</th>
+<th>i</th>
+<th>$</th>
+<th>S'</th>
+<th>E</th>
+<th>E'</th>
+<th>T</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td></td>
+<td>shift 13</td>
+<td></td>
+<td></td>
+<td>goto 12</td>
+<td></td>
+<td>goto 11</td>
+</tr>
+<tr>
+<td>11</td>
+<td>shift 14 / reduce 4</td>
+<td>reduce 4</td>
+<td>reduce 4</td>
+<td></td>
+<td></td>
+<td>goto 17</td>
+<td></td>
+</tr>
+<tr>
+<td>12</td>
+<td></td>
+<td></td>
+<td>accept</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>13</td>
+<td>reduce 5</td>
+<td></td>
+<td>reduce 5</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>14</td>
+<td></td>
+<td>shift 13</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>goto 15</td>
+</tr>
+<tr>
+<td>15</td>
+<td>shift 14 / reduce 4</td>
+<td>reduce 4</td>
+<td>reduce 4</td>
+<td></td>
+<td></td>
+<td>goto 16</td>
+<td></td>
+</tr>
+<tr>
+<td>16</td>
+<td>reduce 3</td>
+<td>reduce 3</td>
+<td>reduce 3</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>17</td>
+<td>reduce 3</td>
+<td>reduce 3</td>
+<td>reduce 2</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The above parsing table is generated by filling up the cells based on the state machine diagram by differentiating the transition via a terminal symbol (<code>shift</code>) and a non-terminal symbol (<code>goto</code>).</p>
+<h3 id="slr-parsing">SLR parsing</h3>
+<p>One issue with the above <code>LR(0)</code> parsing table is that we see conflicts in cells with multiple actions, e.g. cell (<code>11</code>, <code>+</code>). This is also known as the shift-reduce conflict. It is caused by the <em>over-approximation</em> of the <code>ptable</code> function. In the <code>ptable</code> function, we blindly assign reduce actions to current state w.r.t. to all symbols.</p>
+<p>A simple fix to this problem is to consider only the symbols that follows the LHS non-terminal.</p>
+<pre><code class="language-scala">def reduce(states:List[State]):List[(Items, Symbol, Prod)] = {
+  states.foldLeft(List())((accI:(List[(Items, Symbol,  Prod)], Items)) =&gt; accI match {
+    case (acc,I) =&gt; I.toList.foldLeft(acc)( ai:(List[(Items, Symbol,  Prod)], Item)) =&gt; ai match {
+      case (a, ( N::= alpha .)) =&gt; a ++ (follow(N).map( s =&gt; (I, s N::=alpha))) // fix
+      case (a, _) =&gt; a 
+    } 
+  }
+}
+
+def ptable(G:Grammar)(prod:Prod):List[(State, Symbol, Action)] = prod match {
+  case (S::= X$) =&gt; {
+    val init = Set(closure(Set(S ::=.X$))(G))
+    buildSM(init)(G) match {
+      case StateMachine(states, trans, finals) =&gt; {
+        val shifts  = for {
+          (I, x, J) &lt;- trans
+          if isTerminal(x)
+        } yield (I, x, Shift(J))
+        val gotos   = for {
+          (I, x, J) &lt;- trans
+          if !isTerminal(x)
+          yield (I, x, Goto(J)))
+        }
+        val reduces = for {
+          (I, x, N::=alpha) &lt;- reduce(states)
+        } yield (I, x, Reduce(N::=alpha)) // fix
+        val accepts = for {
+          I &lt;- finals
+        } yield (I, $, Accept)
+        shifts ++ gotos ++ reduces ++ accepts
+      }
+    }
+  } 
+}
+</code></pre>
+<p>Given this fix, we are able to generate the conflict-free parsing table that we introduced earlier in this section.</p>
+<h3 id="lr1-parsing-bonus-materials">LR(1) Parsing (Bonus materials)</h3>
+<p>Besides <code>SLR</code>, <code>LR(1)</code> parsing also eliminates many conflicts found in <code>LR(0)</code>. The idea is to re-define item to include the look ahead token.</p>
+<p>For instance for production rule 3 <code>E' ::= +TE'</code>, we have 12 possible items</p>
+<ul>
+<li>(<code>E' ::= .+TE'</code>, <code>+</code>)</li>
+<li>(<code>E' ::= +.TE'</code>, <code>+</code>)</li>
+<li>(<code>E' ::= +T.E'</code>, <code>+</code>)</li>
+<li>(<code>E' ::= +TE'.</code>, <code>+</code>)</li>
+<li>(<code>E' ::= .+TE'</code>, <code>i</code>)</li>
+<li>(<code>E' ::= +.TE'</code>, <code>i</code>)</li>
+<li>(<code>E' ::= +T.E'</code>, <code>i</code>)</li>
+<li>(<code>E' ::= +TE'.</code>, <code>i</code>)</li>
+<li>(<code>E' ::= .+TE'</code>, <code>$</code>)</li>
+<li>(<code>E' ::= +.TE'</code>, <code>$</code>)</li>
+<li>(<code>E' ::= +T.E'</code>, <code>$</code>)</li>
+<li>(<code>E' ::= +TE'.</code>, <code>$</code>)</li>
+</ul>
+<p>We adjust the definition of <code>closure</code> and <code>goto</code></p>
+<pre><code class="language-scala">def closure(I:Items)(G:Grammar):Items = { 
+  val newItems = for {
+    (N ::= alpha . X beta, t) &lt;- I
+    (X ::= gamma)             &lt;- G
+    w                         &lt;- first(beta t)
+  } yield ( X::= . gamma, w).union(
+    for {
+      (N ::= . epsilon, t) &lt;- I
+    } yield ( N::= epsilon ., t)
+  )
+  if (newItems.forall(newItem =&gt; I.contains(newItem)))
+  { I }
+  else { closure(I.union(newItems))(G)}
+
+def goto(I:Items)(G:Grammar)(sym:Symbol):Items = {
+  val J = for {
+    (N ::= alpha . X beta, t) &lt;- I
+  } yield (N ::= alpha X . beta, t)
+  closure(J)(G)
+}
+</code></pre>
+<p>When computing the closure of an item <code>(N ::= alpha . X beta, t)</code>, we look up production rule <code>X ::= gamma</code>, to add <code>X ::= .gamma</code> into the new item set, we need to consider the possible leading terminal tokens coming from <code>beta</code>, and <code>t</code> in case <code>beta</code> accepts epsilon.</p>
+<p>Applying the adjusted definition, we have the follow state diagram</p>
+<div class="mermaid">graph
+  State10["State10 &lt;br/&gt; S'::=.E$, ? &lt;br/&gt; E::=.TE', $ &lt;br/&gt; T::=i, $ &lt;br/&gt; T::=i, + "]--T--&gt;State11["State11 &lt;br/&gt; E::=T.E', $ &lt;br/&gt; E'::=+TE', $ &lt;br/&gt; E'::= . epsilon, $ &lt;br/&gt; E'::= epsilon., $"]
+  State10--E--&gt;State12["State12 &lt;br/&gt; S'::=E.$, ?"]
+  State10--i--&gt;State13["State13 &lt;br/&gt; T::=i., + &lt;br/&gt; T::=i., $"]
+  State11--+--&gt;State14["State14 &lt;br/&gt; E'::= +.TE', $ &lt;br/&gt; T::=.i, + "]
+  State11--E'--&gt;State17["State17 &lt;br/&gt; S'::=E.$, ?"]
+  State14--i--&gt;State13
+  State14--T--&gt;State15["State15 &lt;br/&gt; E'::= +T.E', $ &lt;br/&gt; E'::=.+TE', $ &lt;br/&gt; E'::=.epsilon, $ &lt;br/&gt; E'::=epsilon., $"]
+  State15--+--&gt;State14
+  State15--E'--&gt;State16["State16 &lt;br/&gt; E'::=+TE'., $"]
+</div>
+<p>For the top-most production rule, there is no leading token, we put a special symbol <code>?</code>, which does not affect the parsing.</p>
+<p>To incorporate item's new definition, we adjust the <code>reduce</code> function as follows</p>
+<pre><code class="language-scala">def reduce(states:List[State]):List[(Items, Symbol, Prod)] = {
+  states.foldLeft(List())((accI:(List[(Items,Symbol, Prod)], Items)) =&gt; accI match {
+    case (acc,I) =&gt; I.toList.foldLeft(acc)( ai:(List[(Items, Symbol, Prod)], Item)) =&gt; ai match {
+      case (a, ( N::= alpha ., t)) =&gt; a.append(List((I, t, N::=alpha)))
+      case (a, _) =&gt; a 
+    } 
+  }
+}
+</code></pre>
+<p><code>buildSM</code> and <code>ptable</code> function remain unchanged as per <code>SLR</code> parsing.</p>
+<p>By applying <code>ptable</code> we obtain the same parsing table as <code>SLR</code> parsing.</p>
+<h4 id="slr-vs-lr1">SLR vs LR(1)</h4>
+<p><code>LR(1)</code> covers a larger set of grammar than <code>SLR</code>. For example consider the following grammar.</p>
+<pre><code>&lt;&lt;Grammar 16&gt;&gt;
+1 S' ::= S$
+2 S ::= A a 
+3 S ::= b A c
+4 S ::= d c 
+5 S ::= b d a
+6 A ::= d
+</code></pre>
+<p><code>SLR</code> produces the following state diagram and parsing table.</p>
+<div class="mermaid">graph
+  State10["State10 &lt;br/&gt; S'::=.S$&lt;br/&gt; S::=.Aa &lt;br/&gt; S::= .bAc&lt;br/&gt; S::=.dc &lt;br/&gt; S::=.bda &lt;br/&gt; A::=.d "]--S--&gt;State11["State11 &lt;br/&gt; S'::=S.$"]
+  State10--A--&gt;State12["State12 &lt;br/&gt; S::A.a"]
+  State10--b--&gt;State13["State13 &lt;br/&gt; S::=b.Ac&lt;br/&gt; S::=b.da &lt;br/&gt; A::=.d"]
+  State10--d--&gt;State14["State14 &lt;br/&gt; S::= d.c &lt;br/&gt; A::=d."]
+  State12--a--&gt;State15["State15 &lt;br/&gt; S::=Aa."]
+  State13--A--&gt;State16["State16 &lt;br/&gt; S::=bA.c"]
+  State13--d--&gt;State17["State17 &lt;br/&gt; A::=d. &lt;br/&gt; S::=bd.a"]
+  State14--c--&gt;State18["State18 &lt;br/&gt; S::=dc."]
+  State16--c--&gt;State19["State19 &lt;br/&gt; S::=bAc."]
+  State17--a--&gt;State20["State20 &lt;br/&gt; S::=bda."]  
+</div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>a</th>
+<th>b</th>
+<th>c</th>
+<th>d</th>
+<th>$</th>
+<th>S'</th>
+<th>S</th>
+<th>A</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td></td>
+<td>shift 13</td>
+<td></td>
+<td>shift 14</td>
+<td></td>
+<td></td>
+<td>goto 11</td>
+<td>goto 12</td>
+</tr>
+<tr>
+<td>11</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>accept</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>12</td>
+<td>shift 15</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>13</td>
+<td></td>
+<td></td>
+<td></td>
+<td>shift 17</td>
+<td></td>
+<td></td>
+<td></td>
+<td>goto 16</td>
+</tr>
+<tr>
+<td>14</td>
+<td>reduce 6</td>
+<td></td>
+<td>shift 18 / reduce 6</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>15</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>16</td>
+<td></td>
+<td></td>
+<td>shift 19</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>17</td>
+<td>shift 20 / reduce 6</td>
+<td></td>
+<td>reduce 6</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>18</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 4</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>19</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 3</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>20</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 5</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>There exist shift-reduce conflict. This is because in the closure computation when
+the item  <code>X::= . gamma</code> is added to the closure, we approximate the next leading token by <code>follow(X)</code>. However there might be other alternative production rule for <code>X</code> in the grammar.
+This introduces extraneous reduce actions.</p>
+<p><code>LR(1)</code> produces the following state diagram and parsing table.</p>
+<div class="mermaid">graph
+  State10["State10 &lt;br/&gt; S'::=.S$, ? &lt;br/&gt; S::=.Aa, $ &lt;br/&gt; S::= .bAc, $ &lt;br/&gt; S::=.dc, $ &lt;br/&gt; S::=.bda, $ &lt;br/&gt; A::=.d, a "]--S--&gt;State11["State11 &lt;br/&gt; S'::=S.$, ?"]
+  State10--A--&gt;State12["State12 &lt;br/&gt; S::A.a, $"]
+  State10--b--&gt;State13["State13 &lt;br/&gt; S::=b.Ac, $&lt;br/&gt; S::=b.da, $ &lt;br/&gt; A::=.d, c"]
+  State10--d--&gt;State14["State14 &lt;br/&gt; S::= d.c, $ &lt;br/&gt; A::=d., a"]
+  State12--a--&gt;State15["State15 &lt;br/&gt; S::=Aa., $"]
+  State13--A--&gt;State16["State16 &lt;br/&gt; S::=bA.c,$"]
+  State13--d--&gt;State17["State17 &lt;br/&gt; A::=d.,c &lt;br/&gt; S::=bd.a, $"]
+  State14--c--&gt;State18["State18 &lt;br/&gt; S::=dc., $"]
+  State16--c--&gt;State19["State19 &lt;br/&gt; S::=bAc., $"]
+  State17--a--&gt;State20["State20 &lt;br/&gt; S::=bda., $"]  
+</div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>a</th>
+<th>b</th>
+<th>c</th>
+<th>d</th>
+<th>$</th>
+<th>S'</th>
+<th>S</th>
+<th>A</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td></td>
+<td>shift 13</td>
+<td></td>
+<td>shift 14</td>
+<td></td>
+<td></td>
+<td>goto 11</td>
+<td>goto 12</td>
+</tr>
+<tr>
+<td>11</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>accept</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>12</td>
+<td>shift 15</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>13</td>
+<td></td>
+<td></td>
+<td></td>
+<td>shift 17</td>
+<td></td>
+<td></td>
+<td></td>
+<td>goto 16</td>
+</tr>
+<tr>
+<td>14</td>
+<td>reduce 6</td>
+<td></td>
+<td>shift 18</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>15</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 2</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>16</td>
+<td></td>
+<td></td>
+<td>shift 19</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>17</td>
+<td>shift 20</td>
+<td></td>
+<td>reduce 6</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>18</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 4</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>19</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 3</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>20</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>reduce 5</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>In which the shift-reduce conflicts are eliminated because when given an item <code>(N ::= alpha . X beta, t)</code>, we add <code>X ::= . gamma</code> into the closure, by computing <code>first(beta t)</code>. This is only specific to this production rule <code>X::= gamma</code> and not other alternative.  </p>
+<h3 id="lr1-and-left-recursion">LR(1) and left recursion</h3>
+<p><code>LR(1)</code> can't handle all grammar with left recursion. For example processing Grammar 5  (from the previous unit) with <code>LR(1)</code> will result in some shift-reduce conflict.</p>
+<h2 id="summary">Summary</h2>
+<p>We have covered</p>
+<ul>
+<li>How to construct a <code>LR(0)</code> parsing table</li>
+<li>How to construct a <code>SLR</code> parsing table</li>
+</ul></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/jquery-3.6.0.min.js"></script>
+<script src="../../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

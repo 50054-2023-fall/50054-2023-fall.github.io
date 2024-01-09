@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Pseudo Assembly - Compiler Design and Program Analysis 50.054</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="../..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-pseudo-assembly">50.054 - Pseudo Assembly</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcomes">Learning Outcomes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#recap-the-compiler-pipeline">Recap the compiler pipeline</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#the-simp-language">The SIMP Language</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#pseudo-assembly">Pseudo Assembly</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#maximal-munch-algorithm">Maximal Munch Algorithm</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#maximal-munch-algorithm-v2">Maximal Munch Algorithm V2</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-pseudo-assembly">50.054 - Pseudo Assembly</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<p>By the end of this lesson, you should be able to</p>
+<ol>
+<li>Describe the syntax of the source language SIMP.</li>
+<li>Describe the syntax of the intermediate representation language pseudo-assembly.</li>
+<li>Describe how pseudo-assembly program is executed.</li>
+<li>Apply Maximal Munch algorithms to generate a pseudo-assembly code from a given SIMP source code.</li>
+</ol>
+<h2 id="recap-the-compiler-pipeline">Recap the compiler pipeline</h2>
+<p>Recall the compiler pipeline</p>
+<div class="mermaid">graph LR
+A[Lexing] --&gt;B[Parsing] --&gt; C[Semantic Analysis] --&gt; D[Optimization] --&gt; E[Target Code Generation]
+</div>
+<ul>
+<li>Lexing</li>
+<li>Input: Source file in String</li>
+<li>Output: A sequence of valid tokens according to the language specification (grammar)</li>
+<li>Parsing</li>
+<li>Input: Output from the Lexer</li>
+<li>Output: A parse tree representing parsed result according to the parse derivation</li>
+</ul>
+<p>And recall that a parse tree can be considered the first intermediate representation (IR). However the parse tree is to close to the source level which makes it hard to be used for code generation. 
+For now let's fast forward to consider another IR which is closer to the target code, we refer to it as pseudo assembly. In this unit, we skip the semantic analysis and consider a direct translation from the source language (SIMP) to the pseudo assembly.</p>
+<h2 id="the-simp-language">The SIMP Language</h2>
+<p>We consider the syntax of SIMP as follows</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+(\tt Statement) &amp; S &amp; ::= &amp; X = E ; \mid return\ X ; \mid nop; \mid if\ E\ \{ \overline{S} \}\ else\ \{ \overline{S} \} \mid while\ E\ \{ \overline{S} \} \\
+(\tt Expression) &amp; E &amp; ::= &amp; E\ OP\ E \mid X \mid C  \mid (E) \\
+(\tt Statements) &amp; \overline{S} &amp; ::= &amp; S \mid S\ \overline{S} \\
+(\tt Operator) &amp; OP &amp; ::= &amp; + \mid - \mid * \mid &lt;  \mid == \\ 
+(\tt Constant) &amp; C &amp; ::= &amp; 0 \mid 1 \mid 2 \mid ... \mid true \mid false \\ 
+(\tt Variable) &amp; X &amp; ::= &amp; a \mid b \mid c \mid d \mid ...
+\end{array}
+\]</div>
+<p>For simplicity, we ignore functions and procedures. We assume a special variable <span class="arithmatex">\(input\)</span> serving as the input argument to the program. We write <span class="arithmatex">\(\overline{S}\)</span> to denote a sequence of statements. <span class="arithmatex">\(return\)</span> statement takes a variable instead of an expression. <span class="arithmatex">\(nop\)</span> stands a "no-op" statement, which implies no action preformed. The rest of the syntax is very similar to Java and C except that the type annotations are omitted. </p>
+<p>For example (Example SIMP1)</p>
+<pre><code class="language-python">x = input;
+s = 0;
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+</code></pre>
+<h2 id="pseudo-assembly">Pseudo Assembly</h2>
+<p>We consider the Pseudo Assembly language as follows.</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+(\tt Labeled\ Instruction) &amp; li  &amp; ::= &amp; l : i \\ 
+(\tt Instruction)   &amp; i   &amp; ::= &amp; d \leftarrow s \mid d \leftarrow s\ op\ s \mid ret \mid ifn\ s\ goto\ l \mid goto\ l \\ 
+(\tt Labeled\ Instructions)   &amp; lis   &amp; ::= &amp; li \mid li\ lis \\ 
+(\tt Operand)       &amp; d,s &amp; ::= &amp; r \mid c \mid t \\
+(\tt Temp\ Var)      &amp; t   &amp; ::= &amp; x \mid y \mid ...  \\
+(\tt Label)         &amp; l   &amp; ::= &amp; 1 \mid 2 \mid ... \\
+(\tt Operator)      &amp; op  &amp; ::= &amp; + \mid - \mid &lt; \mid == \\ 
+(\tt Constant)      &amp; c   &amp; ::= &amp; 0 \mid 1 \mid 2 \mid ... \\ 
+(\tt Register)      &amp; r &amp;   ::= &amp; r_{ret} \mid r_1 \mid r_2 \mid ...  
+\end{array}
+\]</div>
+<p>where <span class="arithmatex">\(li\)</span>, a labeled instruction, is a label <span class="arithmatex">\(l\)</span> associated with an instruction <span class="arithmatex">\(i\)</span>. For simplicity, we use positive integers as labels. 
+An instruction is either a move operation (moving value from source operand <span class="arithmatex">\(s\)</span> to destination operatnd <span class="arithmatex">\(d\)</span>), a binary move operation, a return instruction, a conditional jump instruction and a jump instruction. Some non-syntactical restriction exists, e.g. a constant can't be used in a destination position. In Psuedo Assembly, we use <code>0</code> to denote <code>false</code> and <code>1</code>  to denote <code>true</code>.
+<span class="arithmatex">\(r_{ret}\)</span> is a special register for the return statement.</p>
+<p>Example (PA1)</p>
+<pre><code class="language-java">1: x &lt;- input
+2: s &lt;- 0
+3: c &lt;- 0
+4: t &lt;- c &lt; x 
+5: ifn t goto 9
+6: s &lt;- c + s
+7: c &lt;- c + 1
+8: goto 4
+9: rret &lt;- s
+10: ret
+</code></pre>
+<h3 id="informal-specification-of-pseudo-assembly">Informal Specification of Pseudo Assembly</h3>
+<p>We assume that statements of a pseudo assembly program are stored in a list. There exists a mapping from labels to the corresponding instructions, When we execute a pseudo assembly program, we use a program counter to keep track of the current execution context (i.e. the current labeled instruction being considered) and use a set to keep track of the variable to value mapping. </p>
+<p>For example when we execute the above program with <code>input = 2</code>
+|Program Counter| Local  Memory | Next Instr | 
+|---|---|---|
+| 1 | {input: 2, x : 2} | 2 | 
+| 2 | {input: 2, x : 2, s : 0} | 3 |<br/>
+| 3 | {input: 2, x : 2, s : 0, c : 0} | 4 | 
+| 4 | {input: 2, x : 2, s : 0, c : 0, t : 1} | 5 |
+| 5 | {input: 2, x : 2, s : 0, c : 0, t : 1} | 6 |
+| 6 | {input: 2, x : 2, s : 0, c : 0, t : 1} | 7 |
+| 7 | {input: 2, x : 2, s : 0, c : 1, t : 1} | 8 | 
+| 8 | {input: 2, x : 2, s : 0, c : 1, t : 1} | 4 | 
+| 4 | {input: 2, x : 2, s : 0, c : 1, t : 1} | 5 |
+| 5 | {input: 2, x : 2, s : 0, c : 1, t : 1} | 6 |
+| 6 | {input: 2, x : 2, s : 1, c : 1, t : 1} | 7 |
+| 7 | {input: 2, x : 2, s : 1, c : 2, t : 1} | 8 |
+| 8 | {input: 2, x : 2, s : 1, c : 2, t : 1} | 4 |
+| 4 | {input: 2, x : 2, s : 1, c : 2, t : 0} | 5 |
+| 5 | {input: 2, x : 2, s : 1, c : 2, t : 0} | 9 |
+| 9 | {input: 2, x : 2, s : 1, c : 2, t : 0, rret : 1} | 10 |
+| 10 | {input: 2, x : 2, s : 1, c : 2, t : 0, rret : 1} | - | </p>
+<p>For the time being, we use a table to illusrate the execution of an PA program. Each entry in the table has 3 fields, the program counter, the current local memory (mapping from operands to values), and the next intruction. Move and binary operations updates the local memory. For non-jump instructions, the next instruction is the current instruction label incremeented by 1. For goto, the next instruction is the one associated with the destination label. For conditional jump, the next instruction is dependent on the source operand's value.
+We study the formal specification of the up-coming lessons.</p>
+<h2 id="maximal-munch-algorithm">Maximal Munch Algorithm</h2>
+<p>To convert a SIMP program into the pseudo assembly, we could consider the Maximal Munch Algorithm which is described in terms of the set of deduction rules in the following. </p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (mAssign)} &amp; \begin{array}{c} 
+               G_a(X)(E) \vdash lis  \\
+               \hline
+               G_s(X = E) \vdash lis
+               \end{array} \\ 
+\end{array}  
+\]</div>
+<p>In case we have an assignment statement <span class="arithmatex">\(X = E\)</span>, we call a helper function <span class="arithmatex">\(G_a\)</span> to generate the Peudo Assembly (PA) labeled instructions.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (mReturn)} &amp; \begin{array}{c}
+     G_a(r_{ret})(X) \vdash lis \ \ l\ {\tt is\ a\ fresh\ label} \\
+     \hline
+     G_s(return\ X) \vdash lis + [ l: ret ]
+     \end{array}
+\end{array}
+\]</div>
+<p>In case we have a return statement <span class="arithmatex">\(return\ E\)</span>, we make use of the same helper function <span class="arithmatex">\(G_a\)</span> to generate the instructions of assigning <span class="arithmatex">\(E\)</span> to the special register <span class="arithmatex">\(r_{ret}\)</span>. We then generate a new label <span class="arithmatex">\(l\)</span>, and append <span class="arithmatex">\(l:ret\)</span> to the instructions.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (mSequence)} &amp; \begin{array}{c} 
+               {\tt for}\ l \in \{1,n\} ~~ G_s(S_l) \vdash lis_l \\
+               \hline
+               G_s(S_1;...;S_n) \vdash lis_1 + ... +  lis_n
+               \end{array} 
+\end{array}  
+\]</div>
+<p>In case we have a sequence of statements, we apply <span class="arithmatex">\(G_s\)</span> recurisvely to the individual statements in order, then we merge all the results by concatenation.</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (mIf)} &amp; \begin{array}{c}
+               t\ {\tt is\ a\ fresh\ var} \\ 
+               G_a(t)(E) \vdash lis_0 \\
+               l_{IfCondJ}\ {\tt is\ a\ fresh\ label} \\
+               G_s(S_2) \vdash lis_2 \\ 
+               l_{EndThen}\ {\tt  is\ a\ fresh\ label} \\  
+               l_{Else}\ {\tt is\ the\ next\ label (w/o\ incr)} \\ 
+               G_s(S_3) \vdash lis_3 \\ 
+               l_{EndElse}\ {\tt is\ a\ fresh\ label} \\
+               l_{EndIf}\ {\tt is\ the\ next\ label\ (w/o\ incr)} \\ 
+               lis_1 = [l_{IfCondJ}: ifn\ t\ goto\ l_{Else} ] \\ 
+               lis_2' = lis_2 + [l_{EndThen}:goto\ l_{EndIf}] \\ 
+               lis_3' = lis_3 + [l_{EndElse}:goto\ l_{EndIf}] \\ 
+               \hline  
+               G_s(if\ E\ \{S_2\}\ else\ \{S_3\}) \vdash lis_0 + lis_1 + lis_2' + lis_3'               
+                \end{array} \\  
+\end{array}
+\]</div>
+<p>In case we have a if-else statement, we 
+1. generate a fresh variable <span class="arithmatex">\(t\)</span>, and call <span class="arithmatex">\(G_a(t)(E)\)</span> to convert the conditional expression into PA instructions.
+2. generate a new label <span class="arithmatex">\(l_{IfCondJ}\)</span> (conditional jump).
+3. call <span class="arithmatex">\(G_s(S_2)\)</span> to generate the PA instructions for the then branch.
+4. generate a new label <span class="arithmatex">\(l_{EndThen}\)</span> which is associated with the "end-of-then-branch" goto instruction.
+5. peek into the label generator to find out what is the next upcoming label and refer to it as <span class="arithmatex">\(l_{Else}\)</span>. 
+6. call <span class="arithmatex">\(G_s(S_3)\)</span> to generate the PA instructions for the else branch.
+7. generate a new label <span class="arithmatex">\(l_{EndElse}\)</span>, which is associated with the "end-of-else-branch" goto instruction. (Note that we can assume the next instruction after this is the end of If, in case of nested if-else.)<br/>
+8. peek into the label generator to find out what the next upcoming label is and refer to it as <span class="arithmatex">\(l_{EndIf}\)</span> </p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+     {\tt (mWhile)} &amp; \begin{array}{c}
+                    l_{While}\ {\tt is\ the\ next\ label\ (w/o\ incr)} \\ 
+                    t\ {\tt is\ a\ fresh\ var} \\     
+                    G_a(t)(E) \vdash lis_0 \\ 
+                    l_{WhileCondJ}\ {\tt is\ a\ fresh\ label} \\ 
+                    G_s(S) \vdash lis_2\\ 
+                    l_{EndBody}\ {\tt is\ a\ fresh\ label} \\  
+                    l_{EndWhile}\ {\tt is\ the\ next\ label\ (w/o\ incr)} \\ 
+                    lis_1 = [l_{WhileCondJ}: ifn\ t\ goto\ l_{EndWhile}] \\
+                    lis_2' = lis_2 + [ l_{EndBody}: goto\ l_{While} ] \\
+                    \hline
+                    G_s(while\ E\ \{S\}) \vdash lis_0 + lis_1 + lis_2'           
+                \end{array} \\  
+\end{array}
+\]</div>
+<p>In case we have a while statement, we 
+1. peek into the label generator to find out what is the next upcoming label and refer it as <span class="arithmatex">\(l_{While}\)</span>, which can be used later as the reference for the backward jump. 
+2. generate a fresh variable <span class="arithmatex">\(t\)</span>, and call <span class="arithmatex">\(G_a(t)(E)\)</span> to convert the conditional expression into PA instructions.
+3. generate a new label <span class="arithmatex">\(l_{WhileCondJ}\)</span> (conditional jump).
+4. call <span class="arithmatex">\(G_s(S)\)</span> to generate the PA instructions for the body.
+5. generate a new label <span class="arithmatex">\(l_{EndBody}\)</span> which is associated with the "end-of-loop-body" goto instruction.
+6. peek into the label generator to find out what is the next upcoming label and refer to it as <span class="arithmatex">\(l_{EndWhile}\)</span>. (Note that we can assume the next instruction after this is the end of While, in case of nested while)<br/>
+7. peek into the label generator to find out what the next upcoming label is and refer to it as <span class="arithmatex">\(l_{EndIf}\)</span> </p>
+<p>The above summarizes all cases of <span class="arithmatex">\(G_s(S)\)</span>. We now consider the sub algorithm,
+<span class="arithmatex">\(G_a(d)(E)\)</span>, it takes a destination operand and SIMP expression <span class="arithmatex">\(E\)</span> and return a set of labeled instructions. </p>
+<div class="arithmatex">\[
+{\tt (mNOp)} ~~ G_s(nop) \vdash [] 
+\]</div>
+<p>The case of <span class="arithmatex">\(nop\)</span> statement is stratight-forward.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (mConst)} &amp; \begin{array}{c} 
+              l\ {\tt  is\ a\ fresh\ label}\\ c = conv(C) \\
+               \hline
+               G_a(X)(C) \vdash [l : X \leftarrow c] 
+               \end{array} \\ 
+\end{array}
+\]</div>
+<p>In the above rule, given a SIMP variable <span class="arithmatex">\(X\)</span> and a constant <span class="arithmatex">\(C\)</span> we generate a labeled instruction <span class="arithmatex">\(X \leftarrow c\)</span>. where <span class="arithmatex">\(c\)</span> is the PA constant converted from SIMP's counter-part through the <span class="arithmatex">\(conv()\)</span> function. </p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+conv(true) &amp; = &amp;  1\\
+conv(false) &amp; = &amp; 0\\
+conv(C) &amp; =&amp;  C
+\end{array}
+\]</div>
+<p>For simplicity, we omitted the conversion from the SIMP variable to the IR temp variable. </p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (mVar)} &amp; \begin{array}{c} 
+              l\ {\tt  is\ a\ fresh\ label} \\
+               \hline
+               G_a(X)(Y) \vdash [l : X \leftarrow Y] 
+               \end{array} \\ 
+\end{array}  
+\]</div>
+<p>In the above rule, we generate labeled instruction for the case of assigning a SIMP variable <span class="arithmatex">\(Y\)</span> to another variable <span class="arithmatex">\(X\)</span>. The treat is similar to the case of <span class="arithmatex">\({\tt (Const)}\)</span>.</p>
+<div class="arithmatex">\[ 
+\begin{array}{rc}
+{\tt (mParen)} &amp; \begin{array}{c}
+               G_a(X)(E) \vdash lis
+               \\ \hline
+               G_a(X)((E)) \vdash lis
+               \end{array}
+\end{array}
+\]</div>
+<p>In the rule <span class="arithmatex">\({\tt (mParen)}\)</span>, we generate the IR labeled instructions by calling the generation algorithm recursively with the inner expression.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (mOp)} &amp; \begin{array}{c} 
+              t_1\ {\tt is\ a\ fresh\ var} \\ 
+              G_a(t_1)(E_1) \vdash lis_1 \\ 
+              t_2\ {\tt is\ a\ fresh\ var} \\ 
+              G_a(t_2)(E_2) \vdash lis_2 \\ 
+              l\ {\tt  is\ a\ fresh\ label} \\
+               \hline
+               G_a(X)(E_1 OP E_2) \vdash lis_1 + lis_2 + [l : X \leftarrow t_1 OP t_2] 
+               \end{array} \\ 
+\end{array}  
+\]</div>
+<p>The above rule handles the case where the RHS of the SIMP assignment statement is a binary operation <span class="arithmatex">\(E_1\ OP\ E_2\)</span>, we generate two temp variables <span class="arithmatex">\(t_1\)</span> and <span class="arithmatex">\(t_2\)</span>, and apply the generation function recursively to <span class="arithmatex">\(E_1\)</span> and <span class="arithmatex">\(E_2\)</span>. Finally we concatenate the results <span class="arithmatex">\(lis_1\)</span> and <span class="arithmatex">\(lis_2\)</span> with the binary move operation <span class="arithmatex">\(X \leftarrow t_1\ OP\ t_2\)</span>.</p>
+<p>For example, given the source in Example SIMP1, we apply the above algorithm and observe the following derivation.</p>
+<ol>
+<li>Firstly we apply <span class="arithmatex">\({\tt (mSequence)}\)</span> rule to individual statement,</li>
+</ol>
+<pre><code>Gs(x = input; s = 0; c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;) 
+---&gt;
+Gs(x = input) ; Gs( s = 0) ; Gs(c = 0) ; Gs( while c &lt; x  { s = c + s; c = c + 1;}) ; Gs(return s);
+</code></pre>
+<p>The derivation for <code>Gs(x = input)</code> is trivial, we apply <span class="arithmatex">\({\tt (mAssign)}\)</span> rule. </p>
+<pre><code>Gs(x = input) 
+---&gt; # using (mAssign) rule
+Ga(x)(input)
+---&gt; # using (mVar) rule
+---&gt; [ 1: x &lt;- input ] 
+</code></pre>
+<p>Similarly we generate </p>
+<pre><code>Gs( s = 0)
+---&gt; # using (mAssign) rule
+Ga(s)(0)
+---&gt; # using (mConst) rule
+---&gt; [ 2: s &lt;- 0 ] 
+</code></pre>
+<p>and </p>
+<pre><code>Gs(c = 0)
+---&gt; # using (mAssign) rule
+Ga(c)(0)
+---&gt; # using (mConst) rule
+---&gt; [ 3: c &lt;- 0 ] 
+</code></pre>
+<ol>
+<li>Next we consider the while statement</li>
+</ol>
+<pre><code>Gs(
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+)
+---&gt; # using (mWhile) rule
+  # the condition exp
+  t is a fresh var
+  Ga(t)(c&lt;x) ---&gt; # using (mOp) rule
+     t1 is a fresh var
+     Ga(t1)(x) ---&gt; [4: t1 &lt;- x]
+     t2 is a fresh var 
+     Ga(t2)(c) ---&gt; [5: t2 &lt;- c]
+  ---&gt; [4: t1 &lt;- x, 5: t2 &lt;-c, 6: t &lt;- t1 &lt; t2 ]
+  # the conditional jump, we generate a new label 7 reserved for whilecondjump
+  # the while loop body
+  Gs[ s = c + s; c = c + 1]
+  ---&gt; # (mSequence), (mOp) and (mOp) rules
+  [ 8: t3 &lt;- c, 9: t4 &lt;- s, 10: t5 &lt;- t3 + t4,  11: t6 &lt;- c, 12: t7 &lt;- 1, 13: t8 &lt;- t6 + t7 ]
+  # end of the while loop
+  [ 14: goto 4 ]
+  # the conditional jump 
+  ---&gt; [7: ifn t goto 15 ]
+---&gt;  # putting altogther
+[4: t1 &lt;- x, 5: t2 &lt;- c, 6:  t &lt;- t1 &lt; t2,   7: ifn t goto 15, 
+ 8: t3 &lt;- c, 9: t4 &lt;- s, 10: t5 &lt;- t3 + t4,  11: t6 &lt;- c, 
+ 12: t7 &lt;- 1, 13: t8 &lt;- t6 + t7, 14: goto 4] 
+</code></pre>
+<ol>
+<li>Finally we convert the return statement</li>
+</ol>
+<pre><code>Gs(return s)
+---&gt; # (mReturn) rule
+[15: r_ret &lt;- s, 16: ret]
+</code></pre>
+<p>Putting 1,2,3 together</p>
+<pre><code>1: x &lt;- input
+2: s &lt;- 0
+3: c &lt;- 0
+4: t1 &lt;- x
+5: t2 &lt;- c
+6: t &lt;- t1 &lt; t2
+7: ifn t goto 15 
+8: t3 &lt;- c
+9: t4 &lt;- s
+10: t5 &lt;- t3 + t4
+11: t6 &lt;- c 
+12: t7 &lt;- 1 
+13: t8 &lt;- t6 + t7
+14: goto 4
+15: rret &lt;- s
+16: ret
+</code></pre>
+<p>As we observe, we don't quite get the exact output as example PA1. The main reason is that we generate extra steps thanks to the <span class="arithmatex">\({\tt (mOp)}\)</span> rule, (in which each operand of the binary operator takes up a new instruction).</p>
+<h2 id="maximal-munch-algorithm-v2">Maximal Munch Algorithm V2</h2>
+<p>Since the <span class="arithmatex">\({\tt (mOp)}\)</span> rule is the culprit of causing extra move steps generated in the IR.</p>
+<p>We consider a variant the Maximal Munch Algorithm. Instead of using <span class="arithmatex">\(G_a(X)(E)\)</span> to generate  labeled instructions <span class="arithmatex">\(lis\)</span> , we use a different sub system <span class="arithmatex">\(G_e(E)\)</span> to generate a pair of results, <span class="arithmatex">\(\^{e}, \v{e}\)</span>. where <span class="arithmatex">\(\v{e}\)</span> is a sequence of label instructions generated from <span class="arithmatex">\(E\)</span> and <span class="arithmatex">\(\^{e}\)</span> is the "result" operand storing the final result of <span class="arithmatex">\(\v{e}\)</span>.</p>
+<p>The adjusted <span class="arithmatex">\({\tt (mConst)}\)</span>, <span class="arithmatex">\({\tt (mVar)}\)</span> and <span class="arithmatex">\({\tt (mOp)}\)</span> rules are as follows,</p>
+<div class="arithmatex">\[ 
+\begin{array}{rc}
+{\tt (m2Const)} &amp; \begin{array}{c} 
+          G_e(C) \vdash (conv(C), []) 
+          \end{array} 
+\end{array}  
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (m2Var)} &amp; \begin{array}{c} 
+          G_e(Y) \vdash (Y, []) 
+     \end{array} 
+\end{array}  
+\]</div>
+<p>The rules <span class="arithmatex">\({\tt (m2Const)}\)</span> and <span class="arithmatex">\({\tt (m2Var)}\)</span> are simple. We just return the constant (variable) as the <span class="arithmatex">\(\^{e}\)</span> with an empty set of label instructions.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (m2Paren)} &amp; \begin{array}{c} 
+          G_e(E) \vdash (\^{e}, \v{e})
+          \\ \hline
+          G_e((E)) \vdash (\^{e}, \v{e})
+     \end{array} 
+\end{array}  
+\]</div>
+<p>In the rule <span class="arithmatex">\({\tt (m2Paren)}\)</span>, we generate the results by recursivelly applying the algorithm to the inner expression.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (m2Op)} &amp; \begin{array}{c} 
+          G_e(E_1) \vdash (\^{e}_1, \v{e}_1) \\ 
+          G_e(E_2) \vdash (\^{e}_2, \v{e}_2) \\ 
+          t \ {\tt is\ a\ fresh\ variable.} \\ 
+          l \ {\tt is\ a\ fresh\ label.} \\ 
+          \hline
+          G_e(E_1 OP E_2) \vdash (t, \v{e}_1 + \v{e}_2 + [l : t \leftarrow \^{e}_1 OP \^{e}_2]) 
+          \end{array} \\ 
+\end{array}  
+\]</div>
+<p>In the <span class="arithmatex">\({\tt (m2Op)}\)</span> rule, we call <span class="arithmatex">\(G_e(\cdot)\)</span> recursively to generate the 
+results for <span class="arithmatex">\(E_1\)</span> and <span class="arithmatex">\(E_2\)</span>, namely <span class="arithmatex">\((\^{e}_1, \v{e}_1)\)</span> and <span class="arithmatex">\((\^{e}_2, \v{e}_2)\)</span>. 
+We then use them to synthesis the final output. </p>
+<p>The <span class="arithmatex">\(G_s(S)\)</span> rules are now calling <span class="arithmatex">\(G_e(E)\)</span> instead of <span class="arithmatex">\(G_a(X)(E)\)</span>. 
+$$
+\begin{array}{rc}
+{\tt (m2Assign)} &amp; \begin{array}{c} 
+     G_e(E) \vdash (\^{e}, \v{e})  \ \ 
+     l\ {\tt is\ a\ fresh\ label.} \ 
+     \hline
+     G_s(X = E) \vdash \v{e} + [ l : X \leftarrow \^{e}]
+     \end{array} \ 
+\end{array}<br/>
+$$</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (m2Return)} &amp; \begin{array}{c}
+     G_s(return\ X) \vdash \v{e} + [ l_1 : r_{ret} \leftarrow X,  l_2: ret ]
+     \end{array} 
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rl}
+{\tt (m2If)} &amp; \begin{array}{c}
+          G_e(E) \vdash (\^{e}, \v{e}) \\ 
+          l_{IfCondJ}\ {\tt is\ a\ fresh\ label} \\
+          G_s(S_2) \vdash lis_2 \\ 
+          l_{EndThen}\ {\tt  is\ a\ fresh\ label} \\  
+          l_{Else}\ {\tt is\ the\ next\ label (w/o\ incr)} \\ 
+          G_s(S_3) \vdash lis_3 \\ 
+          l_{EndElse}\ {\tt is\ a\ fresh\ label} \\
+          l_{EndIf}\ {\tt is\ the\ next\ label\ (w/o\ incr)} \\ 
+          lis_1 = [l_{IfCondJ}: ifn\ \^{e}\ goto\ l_{Else} ] \\ 
+          lis_2' = lis_2 + [l_{EndThen}:goto\ l_{EndIf}] \\ 
+          lis_3' = lis_3 + [l_{EndElse}:goto\ l_{EndIf}] \\ 
+          \hline  
+          G_s(if\ E\ \{S_2\}\ else\ \{S_3\}) \vdash \v{e} + lis_1 + lis_2' + lis_3'               
+          \end{array} 
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rl}
+{\tt (m2While)} &amp; \begin{array}{c}
+          l_{While}\ {\tt is\ the\ next\ label\ (w/o\ incr)} \\ 
+          G_e(E) \vdash (\^{e}, \v{e}) \\ 
+          l_{WhileCondJ}\ {\tt is\ a\ fresh\ label} \\ 
+          G_s(S) \vdash lis_2\\ 
+          l_{EndBody}\ {\tt is\ a\ fresh\ label} \\  
+          l_{EndWhile}\ {\tt is\ the\ next\ label\ (w/o\ incr)} \\ 
+          lis_1 = [l_{WhileCondJ}: ifn\ \^{e}\ goto\ l_{EndWhile}] \\
+          lis_2' = lis_2 + [ l_{EndBody}: goto\ l_{While} ] \\
+          \hline
+          G_s(while\ E\ \{S\}) \vdash  \v{e} + lis_1 + lis_2'           
+          \end{array} 
+\end{array}
+\]</div>
+<p>By comparing this version with the first one, we note that we reduce the number of labels as well as the numbers of temp variables being created througout the conversion from SIMP to PA. </p>
+<p>For example, if we apply the optimized version of Maximal Munch to the example SIMP1, we should obtain example PA1 as result.</p></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/jquery-3.6.0.min.js"></script>
+<script src="../../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>
