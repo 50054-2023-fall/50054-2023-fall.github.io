@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Name Analysis - Compiler Design and Program Analysis 50.054</title>
+<link href="../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../notes/handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-name-analysis">50.054 - Name Analysis</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcomes">Learning Outcomes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#what-is-name-analysis">What is Name Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#variable-scope">Variable Scope</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#static-single-assignment-form">Static Single Assignment form</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#structured-ssa">Structured SSA</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-name-analysis">50.054 - Name Analysis</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Articulate the purpose of name analysis.</li>
+<li>Describe the properties of the static single assignment forms.</li>
+<li>Implement the static single assignment construction and deconstruction algorithms.</li>
+</ol>
+<h2 id="what-is-name-analysis">What is Name Analysis</h2>
+<p>Given a source program (or AST), the compiler needs to check for each identifier defined (i.e. name).</p>
+<ol>
+<li>Is it a variable name or a function name? This is not an issue for SIMP language as we don't deal with function at the momement.</li>
+<li>Is the variable name of type int or bool? This has been addressed via the type inference and type checking in the previous unit.</li>
+<li>What is the scope of the variable?</li>
+<li>Has the variable been declared before used?</li>
+<li>Where is the defined variable used?</li>
+</ol>
+<h2 id="variable-scope">Variable Scope</h2>
+<p>Consider the following Python program, </p>
+<pre><code class="language-python">x = -1
+
+def f():
+    x = 1
+    return g()
+
+def g():
+    print(x)
+
+f()
+</code></pre>
+<p>When the program is executed, we observe <code>-1</code> being printed. The variable <code>x=1</code> in <code>f()</code> does not modify the <code>x=-1</code> in the outer scope. Hence when <code>g()</code> is called, the variable <code>x</code> being printed is from the global scope <code>x=-1</code>. This is known as <em>static scoping</em>. </p>
+<h3 id="static-variable-scoping">Static Variable Scoping</h3>
+<p>For a programming language with static variable scoping, the relation between a variable's definition and its reference is defined by its syntactic structure, (also known as lexical structure). For instance the earlier example shows that Python is using static variable scoping, because the Python program has the following syntactic structure (e.g. Syntax Tree).</p>
+<div class="mermaid">graph TD;
+    Main --&gt; x1["x=-1"];
+    Main --&gt; f;
+    f --&gt; x2[x=1];
+    Main --&gt; g;
+    g --&gt; usex1["print(x)"];
+</div>
+<p>Thus the <code>print(x)</code> of <code>g</code> uses the <code>x</code> defined in its parent node.</p>
+<h3 id="dynamic-variable-scoping">Dynamic Variable Scoping</h3>
+<p>For a programming language with dynamic scoping, the relation between a variable's definition and its reference is defined by the dynamic call stack. </p>
+<pre><code class="language-perl">$x = -1;
+
+sub f {
+    local $x = 1;
+    return g();
+}
+
+sub g {
+    print $x;
+}
+f()
+</code></pre>
+<p>In the above, it is the same program coded in <code>perl</code>. Except that in perl, variables with <code>local</code> are defined using dynamic scoping. As a result, <code>1</code> is printed when the program is executed. When a program with dynamic variable scoping is executed, its variable reference follows the </p>
+<div class="mermaid">graph TD;
+    Main --&gt; x1["x=-1"];
+    Main --&gt; f;
+    f --&gt; x2[x=1];
+    f --&gt; g;
+    g --&gt; usex1["print(x)"];    
+</div>
+<p>As illustrated by the dynamic call graph above, the variable <code>x</code> in <code>print(x)</code> refers to <code>g</code>'s caller, i.e. <code>f</code>, which is <code>1</code>.</p>
+<h3 id="more-on-static-variable-scoping">More On Static Variable Scoping</h3>
+<p>Static Variable Scoping is dominating the program language market now. Most of the main stream languages uses static variable scoping thanks to its ease of reasoning, e.g. C, C++, Python, Java and etc. Among these languages, there are also some minor variant of static variable scoping implementation.</p>
+<p>Consider the following Python program.</p>
+<pre><code class="language-python">def main(argv):
+    x = 1
+    if len(argv) == 0:
+        x = 2
+    else:
+        y = 1
+    print(y)
+</code></pre>
+<p>when the input <code>argv</code> is a non-empty list, the function <code>main</code> prints <code>1</code> as results. However when <code>argv</code> is an empty list, a run-time error arises.</p>
+<p>Consider the "nearly-the-same" program in Java.</p>
+<pre><code class="language-java">class Main {
+    public static int main(String[] argv) {
+        int x = 1;
+        if (argv.length &gt; 0){
+            x = 2;
+        } else {
+            int y = 1;
+        }
+        System.out.println(y.toString());
+        return 1;
+    }
+}
+</code></pre>
+<p>Java returns a compilation error, complaining variable <code>y</code> being use in the <code>System.out.println</code> function can't be resolved.</p>
+<p>The difference here is that in Python, all variables declared in a function share the same scope. While in Java, variable's scope is further divided based on the control flow statement such as if-else, while and etc. In the above example, the variable <code>y</code>'s scope is only within the else branch but not outside.</p>
+<p>In SIMP, we assume the same variable scoping implementation as Python, i.e. all variables declared in a function shared the same scope, and since the SIMP language we have so far does not support function call, we further simplify the problem that all variables are sharing same scope. </p>
+<p>However how might we detect the run-time error similar to what we've observed from the last Python example? </p>
+<p>Let's recast the example in SIMP, let's call it <code>SIMP_ERR1</code></p>
+<pre><code class="language-java">// SIMP_ERR1
+x = 1;
+if input == 0 {
+    x = 2;
+} else {
+    y = 1;
+}
+return y;
+</code></pre>
+<p>The above program will cause an error when <code>input == 0</code>. It is typeable based on the type inference algorithm we studied in the previous class. 
+Let's consider its pseudo assembly version. The Maximal Munch algorithm v2 produces the following given the SIMP program.</p>
+<pre><code class="language-java">// PA_ERR1
+1:  x &lt;- 1
+2:  t &lt;- input == 0
+3:  ifn t goto 6
+4:  x &lt;- 2
+5:  goto 7
+6:  y &lt;- 1
+7:  rret &lt;- y
+8:  ret
+</code></pre>
+<p>Same error arises when <code>input == 0</code>. </p>
+<h2 id="static-single-assignment-form">Static Single Assignment form</h2>
+<p>Static Single Assignment (SSA) form is an intermediate representation 
+widely used in compiler design and program verification. </p>
+<p>In a static single assignment form, </p>
+<ul>
+<li>Each variable is only allowed to be assigned once syntactically, i.e. it only appears in the LHS of the assignment once. </li>
+<li><span class="arithmatex">\(\phi\)</span>-assignments are placed at the end of branching statements to merge different (re)-definition of the same variable (from the source program). </li>
+</ul>
+<p>SSA form construction is one of the effective ways to analysis</p>
+<ol>
+<li>the scope of variables</li>
+<li>the use-def relationship of variables</li>
+</ol>
+<h3 id="unstructured-ssa-form">Unstructured SSA Form</h3>
+<p>Suppose we extend the pseudo assembly with <span class="arithmatex">\(\phi\)</span>-assignment statements, </p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+(\tt Labeled\ Instruction) &amp; li  &amp; ::= &amp; l : \overline{\phi}\ i \\ 
+(\tt Instruction)   &amp; i   &amp; ::= &amp; d \leftarrow s \mid d \leftarrow s\ op\ s \mid ret \mid ifn\ s\ goto\ l \mid goto\ l \\ 
+(\tt PhiAssignment) &amp; \phi &amp; ::= &amp; d \leftarrow phi(\overline{l:s}) \\ 
+(\tt Labeled\ Instructions)   &amp; lis   &amp; ::= &amp; li \mid li\ lis \\ 
+(\tt Operand)       &amp; d,s &amp; ::= &amp; r \mid c \mid t \\
+(\tt Temp\ Var)      &amp; t   &amp; ::= &amp; x \mid y \mid ...  \\
+(\tt Label)         &amp; l   &amp; ::= &amp; 1 \mid 2 \mid ... \\
+(\tt Operator)      &amp; op  &amp; ::= &amp; + \mid - \mid &lt; \mid == \mid ... \\ 
+(\tt Constant)      &amp; c   &amp; ::= &amp; 0 \mid 1 \mid 2 \mid ... \\ 
+(\tt Register)      &amp; r &amp;   ::= &amp; r_{ret} \mid r_1 \mid r_2 \mid ...  
+\end{array}
+\]</div>
+<p>The syntax is largely unchanged, except that for each labeled instruction, there exists a sequence of phi assignments <span class="arithmatex">\(\overline{\phi}\)</span>. (which could be empty) before the actual instruction <span class="arithmatex">\(i\)</span>. When <span class="arithmatex">\(\overline{\phi}\)</span> is empty, we omit it from the syntax.</p>
+<p>we are able convert any "well-defined" pseudo assembly program into an SSA form. Since we build the SSA forms from some unstructured language program (i.e. no nested control flow statements), we call them unstructured SSA forms.</p>
+<p>Suppose we have the following pseudo assembly program </p>
+<pre><code class="language-java">// PA1
+1: x &lt;- input
+2: s &lt;- 0
+3: c &lt;- 0
+4: t &lt;- c &lt; x 
+5: ifn t goto 9
+6: s &lt;- c + s
+7: c &lt;- c + 1
+8: goto 4
+9: rret &lt;- s
+10: ret
+</code></pre>
+<p>Note that variables <code>s</code> and <code>c</code> are re-assigned in the loop. </p>
+<p>The SSA form of the above is </p>
+<pre><code class="language-java">// SSA_PA1
+1: x0 &lt;- input
+2: s0 &lt;- 0
+3: c0 &lt;- 0
+4: s1 &lt;- phi(3:s0, 8:s2)
+   c1 &lt;- phi(3:c0, 8:c2)
+   t0 &lt;- c1 &lt; x0
+5: ifn t0 goto 9
+6: s2 &lt;- c1 + s1
+7: c2 &lt;- c1 + 1
+8: goto 4
+9: rret &lt;- s1 
+10: ret
+</code></pre>
+<p>In the above example, we inserted a set of phi assigments to label 4. Every variable/register is strictly assigned once. We need to introduce a new "variant" of the same source variable whenever re-assignment is needed. More specifically, in instruction with label 4, we use two phi assignments to merge the multiple definitions of the same source variable.  </p>
+<p>There are two possible preceding instructions that lead us to the following instruction</p>
+<pre><code class="language-java">4: s1 &lt;- phi(3:s0, 9:s2)
+   c1 &lt;- phi(3:c0, 9:c2)
+</code></pre>
+<p>namely, 3 and 9. When the preceding instruction is 3, the above phi assignments will assign <code>s0</code> to <code>s1</code> and <code>c0</code> to <code>c1</code>. Otherwise, <code>s2</code> is assigned to <code>s1</code> and <code>c2</code> is assigned to <code>c1</code>.</p>
+<p>To cater for the phi assignment, we extend the small step operational semantics from
+<span class="arithmatex">\(<span class="arithmatex">\(P \vdash (L, li) \longrightarrow (L', li')\)</span>\)</span> </p>
+<p>to </p>
+<div class="arithmatex">\[P \vdash (L, li, p) \longrightarrow (L', li', p')\]</div>
+<p>The third component <span class="arithmatex">\(p\)</span> in the program context is a label from the preceding instruction based on the execution. </p>
+<div class="arithmatex">\[
+{\tt (pConst)} ~~~ P \vdash (L, l:  d \leftarrow c, p) \longrightarrow (L \oplus (d,c), P(l+1), l) \\ \\
+{\tt (pRegister)} ~~~P \vdash (L, l: d \leftarrow r, p) \longrightarrow (L \oplus (d,L(r)), P(l+1), l) \\  \\
+{\tt (pTempVar)} ~~~P \vdash (L, l: d \leftarrow t, p ) \longrightarrow (L \oplus (d,L(t)), P(l+1), l) \\ \\
+{\tt (pGoto)} ~~ P \vdash (L, l:goto\ l', p) \longrightarrow (L, P(l'), l)
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (pOp)} &amp;  \begin{array}{c}
+        c_1 = L(s_1) ~~~ c_2 = L(s_2) ~~~ c_3 = c_1\ op\ c_2
+        \\ \hline
+        P \vdash (L, l: d \leftarrow s_1\ op\ s_2, p) \longrightarrow (L \oplus (d,c_3), P(l+1), l)  
+        \end{array}
+\\
+{\tt (pIfn0)} &amp; \begin{array}{c}
+     L(s) = 0
+     \\ \hline
+     P \vdash (L, l: ifn\ s\ goto\ l', p) \longrightarrow (L, P(l+1), l)
+     \end{array}
+\\
+{\tt (pIfnNot0)} &amp; \begin{array}{c}
+     L(s) \neq  0
+     \\ \hline
+     P \vdash (L, l: ifn\ s\ goto\ l', p) \longrightarrow (L, P(l'), l)
+     \end{array}
+\end{array}
+\]</div>
+<p>All the existing rules are required some minor changes to accomodate the third component in the program context. 
+The adjustments are common, i.e. propogating the label of the current labeled instruction from the LHS to the RHS as the proceding label.
+Note that the above handle the cases in which the labeled instruction has no phi assignments.  In the presence of phi-assignments, 
+we need the following rules to guide the execution.</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (pPhi1)} &amp;  \begin{array}{c}
+        (L, l: []\ i, p) \longrightarrow (L, l: i, p)
+        \end{array} \\ \\
+{\tt (pPhi2)} &amp;  \begin{array}{c}
+        l_i = p\ \ \ c_i = L(s_i) \\  j \in [1,i-1]: l_j \neq p 
+        \\ \hline
+        (L, l: d \leftarrow phi(l_1:s_1,..,l_n:s_n); \overline{\phi}\ i , p) \longrightarrow (L\oplus(d,c_i), l: \overline{\phi}\ i, p)  
+        \end{array}
+\end{array}
+\]</div>
+<p>The execution of the labeled instruction with phi assignments is defined by the <span class="arithmatex">\((\tt pPhi1)\)</span> and <span class="arithmatex">\((\tt pPhi2)\)</span> rules. </p>
+<ul>
+<li>The <span class="arithmatex">\((\tt pPhi1)\)</span> rule handles the base case where <span class="arithmatex">\(\overline{\phi}\)</span> is an empty sequence, it proceeds to execute the following instruction <span class="arithmatex">\(i\)</span> by using one of the earlier rules. </li>
+<li>The <span class="arithmatex">\((\tt pPhi2)\)</span> rule is applied when the sequence of phi-assignments is not empty. <ol>
+<li>We process the first one phi-assignment. By scanning the set of labels in the <span class="arithmatex">\(phi()\)</span>'s operands from left to right, we identify the first matching label <span class="arithmatex">\(l_i\)</span> and lookup the value of the associated variable/register <span class="arithmatex">\(s_i\)</span>, i.e. <span class="arithmatex">\(c_i\)</span>.</li>
+<li>Add the new entry <span class="arithmatex">\((d,c_i)\)</span> to the local environment <span class="arithmatex">\(L\)</span>. </li>
+<li>Proceed by recursively processing the rest of the phi assignments with the updated <span class="arithmatex">\(L \oplus (d,c_i)\)</span>.</li>
+</ol>
+</li>
+</ul>
+<p>Given <span class="arithmatex">\(input = 1\)</span>, excuting <code>SSA_PA1</code> yields the following derivation</p>
+<pre><code class="language-java">P |- {(input,1)}, 1: x0 &lt;- input, undef ---&gt; # (pTempVar)
+P |- {(input,1), (x0,1)}, 2: s0 &lt;- 0, 1 ---&gt; # (pConst)
+P |- {(input,1), (x0,1), (s0,0)}, 3: c0 &lt;- 0, 2 ---&gt; # (pConst)
+P |- {(input,1), (x0,1), (s0,0), (c0,0)}, 4: s1 &lt;- phi(3:s0, 9:s2); c1 &lt;- phi(3:c0, 9:c2) t0 &lt;- c1 &lt; x0, 3 ---&gt; # (pPhi2)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0)}, 4: c1 &lt;- phi(3:c0, 9:c2) t0 &lt;- c1 &lt; x0, 3 ---&gt; # (pPhi2)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0) }, 4: [] t0 &lt;- c1 &lt; x0, 3 ---&gt; # (pPhi1)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0) }, 4: t0 &lt;- c1 &lt; x0, 3 ---&gt; # (pOp)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0), (t0, 1)}, 5: ifn t0 goto 9, 4 ---&gt; # (pIfn0)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0), (t0, 1)}, 6: s2 &lt;- c1 + s1, 5  ---&gt; # (pOp)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0), (t0, 1), (s2, 0)}, 7: c2 &lt;- c1 + 1, 8  ---&gt; # (pOp)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0), (t0, 1), (s2, 0), (c2, 1)}, 8: goto 4, 7  ---&gt; # (pGoto)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0), (t0, 1), (s2, 0), (c2, 1)}, 4: s1 &lt;- phi(3:s0, 9:s2); c1 &lt;- phi(3:c0, 9:c2) t0 &lt;- c1 &lt; x0, 8 ---&gt; # (pPhi2)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,0), (t0, 1), (s2, 0), (c2, 1)}, 4: c1 &lt;- phi(3:c0, 9:c2) t0 &lt;- c1 &lt; x0, 8 ---&gt; # (pPhi2)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,1), (t0, 1), (s2, 0), (c2, 1)}, 4: [] t0 &lt;- c1 &lt; x0, 8 ---&gt; # (pPhi1)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,1), (t0, 1), (s2, 0), (c2, 1)}, 4: t0 &lt;- c1 &lt; x0, 8 ---&gt; # (pOp)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,1), (t0, 0), (s2, 0), (c2, 1)}, 5: ifn t0 goto 9, 4 ---&gt; # (pIfn0)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,1), (t0, 0), (s2, 0), (c2, 1)}, 9: rret &lt;- s1, 5 ---&gt; # (pTempVar)
+P |- {(input,1), (x0,1), (s0,0), (c0,0), (s1,0), (c1,1), (t0, 0), (s2, 0), (c2, 1), (rret, 0)}, 10: ret, 9 
+</code></pre>
+<h3 id="minimality">Minimality</h3>
+<p>One may argue that instead of generating <code>SSA_PA1</code>, one might generate the following static single assignment</p>
+<pre><code class="language-java">// SSA_PA2
+1: x0 &lt;- input
+2: s0 &lt;- 0
+3: c0 &lt;- 0
+4: s1 &lt;- phi(3:s0, 8:s2)
+   c1 &lt;- phi(3:c0, 8:c2)
+   t0 &lt;- c1 &lt; x0
+5: ifn t0 goto 9
+6: s2 &lt;- c1 + s1
+7: c2 &lt;- c1 + 1
+8: goto 4
+9: s3 &lt;- phi(5:s1)
+   rret &lt;- s3
+10: ret
+</code></pre>
+<p>which will yield the same output. However we argue that <code>SSA_PA1</code> is preferred as it has the minimal number of phi assignments.</p>
+<h3 id="ssa-construction-algorithm">SSA Construction Algorithm</h3>
+<p>The defacto SSA construction algorithm that produces minimal SSA forms was developed by Cytron et al.</p>
+<p><a href="https://doi.org/10.1145/115372.115320">https://doi.org/10.1145/115372.115320</a></p>
+<p>The main idea is to take the original program and identify the "right" locations to insert phi assignments so that the result is a minimal SSA form.</p>
+<h4 id="control-flow-graph">Control flow graph</h4>
+<p>We can model a Pseudo Assembly program using a graph, namely the contorl flow graph.</p>
+<p>For example, <code>PA1</code> can be represented as the following Control flow graph <code>Graph1_PA1</code></p>
+<div class="mermaid">graph TD;
+    B1("1: x &lt;- input
+2: s &lt;- 0
+3: c &lt;- 0")--&gt;B2;
+    B2--&gt;B3;
+    B2("4: t &lt;- c &lt; x 
+5: ifn t goto 9")--&gt;B4("9: rret &lt;- s
+10: ret");
+    B3("6: s &lt;- c + s
+7: c &lt;- c + 1
+8: goto 4")--&gt;B2;
+</div>
+<p>For the ease of reasoning (though unnecessary), without losing the graph properties, we would consider an isomoprhic version of the above graph where the vertices with multiple instructions are further divided until each vertex contains only one instruction, let's call it <code>Graph2_PA1</code></p>
+<div class="mermaid">graph TD;
+    V1("1: x &lt;- input") --&gt; V2;
+    V2("2: s &lt;- 0") --&gt; V3;
+    V3("3: c &lt;- 0") --&gt; V4;
+    V4("4: t &lt;- c &lt; x") --&gt; V5;
+    V5("5: ifn t goto 9") --&gt; V9;
+    V9("9: rret &lt;- s") --&gt; V10("10: ret")
+    V5("5: ifn t goto 9") --&gt; V6;
+    V6("6: s &lt;- c + s") --&gt; V7;
+    V7("7: c &lt;- c + 1") --&gt; V8;
+    V8("8: goto 4") --&gt; V4;
+</div>
+<p>Now we refer to the vertex in a control flow graph by the label.</p>
+<p>The technical trick is to apply some graph operation to identify the "right" locations for phi assignments from the CFG.</p>
+<h4 id="identifying-the-right-locations">Identifying the "right" locations</h4>
+<h5 id="definition-1-graph">Definition 1 - Graph</h5>
+<p>Let <span class="arithmatex">\(G\)</span> be a graph, <span class="arithmatex">\(G = (V, E)\)</span>, where <span class="arithmatex">\(V\)</span> denotes the set of vertices and <span class="arithmatex">\(E\)</span> denote a set of edges. Let <span class="arithmatex">\(v_1 \in V\)</span> and <span class="arithmatex">\(v_2 \in V\)</span>, <span class="arithmatex">\((v_1,v_2) \in E\)</span> implies that exists an edge going from <span class="arithmatex">\(v_1\)</span> to <span class="arithmatex">\(v_2\)</span>. </p>
+<p>Occassionally, we also refer to a vertex as a node in the graph. 
+For convenience, we also write </p>
+<ul>
+<li><span class="arithmatex">\(v \in G\)</span> as the short-hand for <span class="arithmatex">\(v \in V \wedge G = (V,E)\)</span> and </li>
+<li><span class="arithmatex">\((v_1, v_2) \in G\)</span> as the short-hand for <span class="arithmatex">\((v_1, v_2) \in E \wedge G = (V,E)\)</span>.</li>
+</ul>
+<h5 id="definition-2-path">Definition 2 - Path</h5>
+<p>Let <span class="arithmatex">\(v_1\)</span> and <span class="arithmatex">\(v_2\)</span> be two vertices in a graph <span class="arithmatex">\(G\)</span>. We say a path from <span class="arithmatex">\(v_1\)</span> to <span class="arithmatex">\(v_2\)</span>, written as <span class="arithmatex">\(path(v_1,v_2)\)</span>, exists iff </p>
+<ol>
+<li><span class="arithmatex">\(v_1 = v_2\)</span> or</li>
+<li>the set of edges <span class="arithmatex">\(\{(v_1, u_1), (u_1,u_2), ..., (u_n,v_2)\} \subseteq E\)</span> where <span class="arithmatex">\(E\)</span> is the set of edges in <span class="arithmatex">\(G\)</span>.</li>
+</ol>
+<p>For convenience, some times we write <span class="arithmatex">\(v_1,u_1,...,u_n,v_2\)</span> to denote a particular path from <span class="arithmatex">\(v_1\)</span> to <span class="arithmatex">\(v_2\)</span>.</p>
+<h5 id="definition-3-connectedness">Definition 3 - Connectedness</h5>
+<p>Let <span class="arithmatex">\(v_1\)</span> and <span class="arithmatex">\(v_2\)</span> be two vertices in a graph <span class="arithmatex">\(G\)</span>. We say <span class="arithmatex">\(v_1\)</span> and <span class="arithmatex">\(v_2\)</span> are connected, written <span class="arithmatex">\(connect(v_1,v_2)\)</span>, iff </p>
+<ol>
+<li><span class="arithmatex">\(path(v_1, v_2)\)</span> or <span class="arithmatex">\(path(v_2, v_1)\)</span> exists, or </li>
+<li>there exists <span class="arithmatex">\(v_3\)</span> in <span class="arithmatex">\(G\)</span> such that <span class="arithmatex">\(connect(v_1,v_3)\)</span> and <span class="arithmatex">\(connect(v_3, v_2)\)</span>.</li>
+</ol>
+<h5 id="definition-4-source-and-sink">Definition 4 - Source and Sink</h5>
+<p>Let <span class="arithmatex">\(v\)</span> be a vertex in a graph <span class="arithmatex">\(G\)</span>, we say <span class="arithmatex">\(v\)</span> is a source vertex if there exists no entry <span class="arithmatex">\((v',v) \in E\)</span> where <span class="arithmatex">\(E\)</span> is the set of edges in <span class="arithmatex">\(G\)</span>.</p>
+<p>Let <span class="arithmatex">\(v\)</span> be a vertex in a graph <span class="arithmatex">\(G\)</span>, we say <span class="arithmatex">\(v\)</span> is a sink vertex if there exists no entry <span class="arithmatex">\((v, v') \in E\)</span> where <span class="arithmatex">\(E\)</span> is the set of edges in <span class="arithmatex">\(G\)</span>.</p>
+<h5 id="assumption">Assumption</h5>
+<p>Since we are dealing with SIMP program's CFGs, we assume that the set of graphs we are considering are </p>
+<ol>
+<li>Connected, i.e. for any <span class="arithmatex">\(v_1, v_2\)</span> in <span class="arithmatex">\(G\)</span>, we have <span class="arithmatex">\(connect(v_1,v_2)\)</span> </li>
+<li>Has only one source vertex, which means there is only one entry point to the program.</li>
+<li>Has only one sink vertex, which means there is only one return statement.</li>
+</ol>
+<h5 id="definition-5-dominance-relation">Definition 5 - Dominance Relation</h5>
+<p>Let <span class="arithmatex">\(v_1\)</span> and <span class="arithmatex">\(v_2\)</span> be two vertices in a graph <span class="arithmatex">\(G\)</span>. We say <span class="arithmatex">\(v_1\)</span> dominates <span class="arithmatex">\(v_2\)</span>, written as <span class="arithmatex">\(v_1 \preceq v_2\)</span>, iff for all path <span class="arithmatex">\(v_0,...,v_2\)</span> where <span class="arithmatex">\(v_0\)</span> is the source vertex, we find a prefix sequence <span class="arithmatex">\(v_0,...,v_1\)</span> in <span class="arithmatex">\(v_0,...,v_2\)</span>. </p>
+<p>In other words, <span class="arithmatex">\(v_1 \preceq v_2\)</span> means whenever we execute the program from the start to location <span class="arithmatex">\(v_2\)</span>, we definitely pass through location <span class="arithmatex">\(v_1\)</span>. </p>
+<p>For instance, in the earlier control flow graph for <code>Graph2_PA1</code>, </p>
+<ul>
+<li>the vertex <code>1</code> dominates all vertices. </li>
+<li>the vertex <code>4</code> dominates itself, the vertices <code>5,6,7,8,9,10</code>.</li>
+</ul>
+<h5 id="lemma-1-dominance-is-transitive">Lemma 1 - Dominance is transitive</h5>
+<p><span class="arithmatex">\(v_1 \preceq v_2\)</span> and <span class="arithmatex">\(v_2 \preceq v_3\)</span> implies that <span class="arithmatex">\(v_1 \preceq v_3\)</span>.</p>
+<h5 id="lemma-2-domaince-is-reflexive">Lemma 2 - Domaince is reflexive</h5>
+<p>For any vertex <span class="arithmatex">\(v\)</span>, we have <span class="arithmatex">\(v \preceq v\)</span>.</p>
+<h5 id="defintion-6-strict-dominance">Defintion 6 - Strict Dominance</h5>
+<p>We say <span class="arithmatex">\(v_1\)</span> stricly domainates <span class="arithmatex">\(v_2\)</span>, written <span class="arithmatex">\(v_1 \prec v_2\)</span> iff <span class="arithmatex">\(v_1 \preceq v_2\)</span> and <span class="arithmatex">\(v_1 \neq v_2\)</span>.</p>
+<h5 id="defintion-7-immediate-dominator">Defintion 7 - Immediate Dominator</h5>
+<p>We say <span class="arithmatex">\(v_1\)</span> is the immediate dominator of <span class="arithmatex">\(v_2\)</span>, written <span class="arithmatex">\(v_1 = idom(v_2)\)</span> iff <span class="arithmatex">\(v_1 \prec v_2\)</span> and not exists <span class="arithmatex">\(v_3\)</span> such that <span class="arithmatex">\(v_1 \prec v_3\)</span> and <span class="arithmatex">\(v_3 \prec v_2\)</span>.</p>
+<p>Note that <span class="arithmatex">\(idom()\)</span> is a function, i.e. the immediate dominator of a vertex must be unique if it exists.</p>
+<h5 id="dominator-tree">Dominator Tree</h5>
+<p>Given the <span class="arithmatex">\(idom()\)</span> function, we can construct a dominator tree from a control flow graph <span class="arithmatex">\(G\)</span>.</p>
+<ul>
+<li>Each vertex <span class="arithmatex">\(v \in G\)</span> forms a node in the dominator tree.</li>
+<li>For vertices <span class="arithmatex">\(v_1, v_2 \in G\)</span>, <span class="arithmatex">\(v_2\)</span> is a child of <span class="arithmatex">\(v_1\)</span> if <span class="arithmatex">\(v_1 = idom(v_2)\)</span>.</li>
+</ul>
+<p>For example, from the CFG <code>Graph2_PA1</code>, we construct a dominator tree <code>Tree2_PA1</code>, as follows, </p>
+<div class="mermaid">graph TD;
+    1 --&gt; 2;
+    2 --&gt; 3;
+    3 --&gt; 4;
+    4 --&gt; 5;
+    5 --&gt; 6;
+    6 --&gt; 7;
+    7 --&gt; 8;
+    5 --&gt; 9;
+    9 --&gt; 10;
+</div>
+<p>Let <span class="arithmatex">\(T\)</span> be a dominator tree, we write <span class="arithmatex">\(child(v,T)\)</span> to denote the set of children of <span class="arithmatex">\(v\)</span> in <span class="arithmatex">\(T\)</span>.</p>
+<h5 id="definition-8-dominance-frontier">Definition 8 - Dominance Frontier</h5>
+<p>Let <span class="arithmatex">\(v\)</span> be vertex in a graph <span class="arithmatex">\(G\)</span>, we define the dominance frontier of <span class="arithmatex">\(v\)</span> as
+$$
+df(v, G) = { v_2 \mid (v_1,v_2) \in G \wedge v \preceq v_1 \wedge \neg(v \prec v_2) }
+$$</p>
+<p>In other words, the dominance frontier of a vertex <span class="arithmatex">\(v\)</span> is the set of vertices that are not dominated by <span class="arithmatex">\(v\)</span> but their predecesors are (dominated by <span class="arithmatex">\(v\)</span>). </p>
+<p>For instance, in our running example, the dominance frontier of  vertex <code>6</code> is the set containing vertex <code>4</code> This is because </p>
+<ul>
+<li>vertex <code>8</code> is one of the predecesors of the vertex <code>4</code> and </li>
+<li>vertex <code>8</code> is dominated by vertex <code>6</code>, but not the vertex <code>4</code> is not domainated by vertex <code>6</code>.</li>
+</ul>
+<blockquote>
+<p>Question: what is the dominance frontier of vertex <code>5</code>?</p>
+</blockquote>
+<h5 id="computing-dominance-frontier">Computing Dominance Frontier</h5>
+<p>The naive algorithm of computing dominance frontier of all ther vertices in a CFG takes <span class="arithmatex">\(O(n^2)\)</span> where <span class="arithmatex">\(n\)</span> is the number of vertices. </p>
+<p>Cytron et al proposed a more efficient algorithm to compute the dominance frontiers of all the vertices in a CFG. </p>
+<h6 id="re-definining-dominance-frontier">Re-definining Dominance Frontier</h6>
+<p>The main idea is to give a recursive definition to Dominance Frontier by making use of the dominator tree. </p>
+<p>Let <span class="arithmatex">\(G\)</span> be a CFG, and <span class="arithmatex">\(T\)</span> be the dominator tree of <span class="arithmatex">\(G\)</span>. We define 
+$$
+df(v, G) = df_{local}(v, G) \cup \bigcup_{u \in child(v,T)} df_{up}(u, G)  ~~~(E1)
+$$
+where </p>
+<div class="arithmatex">\[
+df_{local}(v, G) = \{ w \mid (v,w) \in G \wedge \neg(v \prec w)\} ~~~(E2)
+\]</div>
+<p>and </p>
+<div class="arithmatex">\[
+df_{up}(v, G) = \{ w \mid w \in df(v,G) \wedge \neg (idom(v) \prec w)\}~~~(E3)
+\]</div>
+<ul>
+<li><span class="arithmatex">\((E1)\)</span> says that the dominance frontier of a vertex <span class="arithmatex">\(v\)</span> is the union of the local contribution <span class="arithmatex">\(df_{local}(v,G)\)</span> and the (dominator tree) descendants' upward contribution <span class="arithmatex">\(\bigcup_{u \in child(v,T)} df_{up}(u, G)\)</span></li>
+<li><span class="arithmatex">\((E2)\)</span> defines the local dominance frontier of a vertex <span class="arithmatex">\(v\)</span> by finding successors <span class="arithmatex">\(w\)</span> of <span class="arithmatex">\(v\)</span> (i.e. there is an edge from <span class="arithmatex">\(v\)</span> to <span class="arithmatex">\(w\)</span>) that are not dominated by <span class="arithmatex">\(v\)</span>.</li>
+<li><span class="arithmatex">\((E3)\)</span> defines the upward contributed frontier of a vertex <span class="arithmatex">\(v\)</span>, by finding vertices <span class="arithmatex">\(w\)</span> in <span class="arithmatex">\(v\)</span>'s dominance frontier, such that <span class="arithmatex">\(w\)</span> is not dominated by <span class="arithmatex">\(v\)</span>'s immediate dominator (i.e. <span class="arithmatex">\(v\)</span>'s parent in the dominator tree).</li>
+</ul>
+<p>Cytron et al shows that <span class="arithmatex">\((E1)\)</span>  defines the same result as Definition 6.</p>
+<h5 id="dominance-frontier-algorithm">Dominance frontier algorithm</h5>
+<p>As we can observe from the recursive definition, it is more efficient to compute the dominance frontiers by traversing the dominator tree "bottom-up", as we can reuse the dominance frontier of the child nodes (vertices) to compute the upward contribution of the parent node (vertex).</p>
+<p>The algorithm is structured as follows</p>
+<ol>
+<li>For each vertex <span class="arithmatex">\(v\)</span> by traversing the dominator tree bottom up:<ol>
+<li>compute <span class="arithmatex">\(df_{local}(v,G)\)</span></li>
+<li>compute <span class="arithmatex">\(\bigcup_{u \in child(v,T)}df_{up}(u, G)\)</span>, which can be looked up from the a memoization table.</li>
+<li>save <span class="arithmatex">\(df(v,G) = df_{local}(v,G) \cup \bigcup_{u \in child(v,T)} df_{up}(u,G)\)</span> in the memoization table.</li>
+</ol>
+</li>
+</ol>
+<p>For instance, we make use of <code>Graph2_PA1</code> and <code>Tree2_PA1</code> to construct the following memoization table <code>Table2_PA1</code></p>
+<table>
+<thead>
+<tr>
+<th>vertex/node</th>
+<th>successors</th>
+<th>children</th>
+<th>idom</th>
+<th><span class="arithmatex">\(df_{local}\)</span></th>
+<th><span class="arithmatex">\(df_{up}\)</span></th>
+<th>df</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td>{}</td>
+<td>{}</td>
+<td>9</td>
+<td>{}</td>
+<td>{}</td>
+<td>{}</td>
+</tr>
+<tr>
+<td>9</td>
+<td>{10}</td>
+<td>{10}</td>
+<td>5</td>
+<td>{}</td>
+<td>{}</td>
+<td>{}</td>
+</tr>
+<tr>
+<td>8</td>
+<td>{4}</td>
+<td>{}</td>
+<td>7</td>
+<td>{4}</td>
+<td>{4}</td>
+<td>{4}</td>
+</tr>
+<tr>
+<td>7</td>
+<td>{8}</td>
+<td>{8}</td>
+<td>6</td>
+<td>{}</td>
+<td>{4}</td>
+<td>{4}</td>
+</tr>
+<tr>
+<td>6</td>
+<td>{7}</td>
+<td>{7}</td>
+<td>5</td>
+<td>{}</td>
+<td>{4}</td>
+<td>{4}</td>
+</tr>
+<tr>
+<td>5</td>
+<td>{6,9}</td>
+<td>{6,9}</td>
+<td>4</td>
+<td>{}</td>
+<td>{4}</td>
+<td>{4}</td>
+</tr>
+<tr>
+<td>4</td>
+<td>{5}</td>
+<td>{5}</td>
+<td>3</td>
+<td>{}</td>
+<td>{}</td>
+<td>{4}</td>
+</tr>
+<tr>
+<td>3</td>
+<td>{4}</td>
+<td>{4}</td>
+<td>2</td>
+<td>{}</td>
+<td>{}</td>
+<td>{}</td>
+</tr>
+<tr>
+<td>2</td>
+<td>{3}</td>
+<td>{3}</td>
+<td>1</td>
+<td>{}</td>
+<td>{}</td>
+<td>{}</td>
+</tr>
+<tr>
+<td>1</td>
+<td>{2}</td>
+<td>{2}</td>
+<td></td>
+<td>{}</td>
+<td>{}</td>
+<td>{}</td>
+</tr>
+</tbody>
+</table>
+<p>From the above table, we conclude that variables that are updated in vertices <code>5,6,7,8</code> should be merged via phi-assignments at the entry point of vertex <code>4</code>.</p>
+<blockquote>
+<p>As highlighted in Cytron's paper, <span class="arithmatex">\(df_{local}(x,G)\)</span> can be defined efficiently as <span class="arithmatex">\(\{ y \mid  (x,y)\in G \wedge idom(y) \neq x \}\)</span></p>
+<p>Furthermore, <span class="arithmatex">\(df_{up}(u,x,G)\)</span> can be defined efficiently as <span class="arithmatex">\(\{y \mid y \in df(u) \wedge idom(y) \neq x \}\)</span></p>
+<p>Note that in Cytron's paper, they include two special vertices, <code>entry</code> the entry vertex, and <code>exit</code> as the exit, and <code>entry</code> dominates everything, and <code>exit</code> is only dominated by <code>entry</code>. The purpose is to handle langugage allowing multiple return statements.</p>
+</blockquote>
+<h5 id="definition-9-iterative-dominance-frontier">Definition 9 - Iterative Dominance Frontier</h5>
+<p>As pointed out by Cytron's work, if a variable <span class="arithmatex">\(x\)</span> is updated in a program location (vertex) <span class="arithmatex">\(v\)</span>, a phi-assignment for this variable must be inserted in the dominance frontier of <span class="arithmatex">\(v\)</span>. However inserting a phi assignment at the dominance fronter of <span class="arithmatex">\(v\)</span> introduces a new location of modifying the variable <span class="arithmatex">\(x\)</span>. This leads to some "cascading effect" in computing the phi-assignment locations. </p>
+<p>We extend the dominance frontier to handle a set of vertices.</p>
+<p>Let <span class="arithmatex">\(S\)</span> denote a set of vertices of a graph <span class="arithmatex">\(G\)</span>. We define</p>
+<div class="arithmatex">\[
+df(S, G) = \bigcup_{v\in S} df(v, G)
+\]</div>
+<p>We define the iterative dominance frontier recursively as follows</p>
+<div class="arithmatex">\[
+\begin{array}{l}
+df_1(S, G) = df(S, G) \\
+df_n(S, G) = df(S \cup df_{n-1}(S,G), G)
+\end{array}
+\]</div>
+<p>It can be proven that there exists <span class="arithmatex">\(k \geq 1\)</span> where <span class="arithmatex">\(df_{k}(S,G) = df_{k+1}(S,G)\)</span>, i.e. the set is bounded. We use <span class="arithmatex">\(df^+(S,G)\)</span> to denote the upper bound.</p>
+<p>It follows that if a variable <span class="arithmatex">\(x\)</span> is modified in locations <span class="arithmatex">\(S\)</span>, then the set of phi-assignments to be inserted for <span class="arithmatex">\(x\)</span> is <span class="arithmatex">\(df^+(S,G)\)</span>.</p>
+<h3 id="ssa-construction-algorithm_1">SSA construction algorithm</h3>
+<p>Given the control flow graph <span class="arithmatex">\(G\)</span>, the dominator tree <span class="arithmatex">\(T\)</span>, and the dominance frontier table <span class="arithmatex">\(DFT\)</span>, the SSA construction algorithm consists of two steps.</p>
+<ol>
+<li>insert phi assignments to the original program <span class="arithmatex">\(P\)</span>.</li>
+<li>rename variables to ensure the single assignment property.</li>
+</ol>
+<h4 id="inserting-phi-assignments">Inserting Phi assignments</h4>
+<p>Before inserting the phi assignments to <span class="arithmatex">\(P\)</span>, we need some intermediate data structure. </p>
+<ol>
+<li>A dictionary <span class="arithmatex">\(E\)</span> that maps program labels (vertices in CFG) to a set of variables.  <span class="arithmatex">\((l, S) \in E\)</span>  implies that variables in <span class="arithmatex">\(S\)</span> having phi-assignment to be inserted at the vertex label <span class="arithmatex">\(l\)</span>. <span class="arithmatex">\(E\)</span> can be constructed from the <span class="arithmatex">\(DFT\)</span> table using the <span class="arithmatex">\(df^+(\cdot,\cdot)\)</span> operation.</li>
+</ol>
+<p>Input: the original program <code>P</code>, can be viewed as a list of labeled instructions.
+Output: the modified program <code>Q</code>. can be viewed as a list of labeled instructions.</p>
+<p>The phi-assignment insertion process can be described as follows,</p>
+<ol>
+<li><code>Q = List()</code></li>
+<li>for each <code>l:i</code> in <code>P</code><ol>
+<li>match <code>E.get(l)</code> with <ol>
+<li>case <code>None</code><ol>
+<li>add <code>l:i</code> to <code>Q</code></li>
+</ol>
+</li>
+<li>case <code>Some(xs)</code><ol>
+<li><code>phis = xs.map( x =&gt; x &lt;- phi( k:x | (k in pred(l,G)))</code></li>
+<li>if <code>phis</code> has more than 1 operand, add <code>l:phis i</code> to <code>Q</code></li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+<p><span class="arithmatex">\(pred(v, G)\)</span> retrieves the set of predecessors of vertex (label) in graph <span class="arithmatex">\(G\)</span>. </p>
+<p>For example, given <code>PA1</code>,</p>
+<ul>
+<li>variable <span class="arithmatex">\(x\)</span> is modified at <code>1</code></li>
+<li>variable <span class="arithmatex">\(s\)</span> is modified at <code>2,6</code></li>
+<li>variable <span class="arithmatex">\(c\)</span> is modified at <code>3,7</code></li>
+<li>variable <span class="arithmatex">\(t\)</span> is modified at <code>4</code></li>
+</ul>
+<p>We construct <span class="arithmatex">\(E\)</span> by consulting the dominance frontier table <code>Table2_PA1</code>.</p>
+<pre><code>E = Map(
+    4 -&gt; Set("s","c", "t")
+)
+</code></pre>
+<p>which says that in node/vertex <code>4</code>, we should insert the phi-assignments for variable <code>s</code> and <code>c</code>.</p>
+<p>Now we apply the above algorithm to <code>PA1</code> which generates</p>
+<pre><code class="language-java">// PRE_SSA_PA1
+1: x &lt;- input
+2: s &lt;- 0
+3: c &lt;- 0
+4: s &lt;- phi(3:s, 8:s)
+   c &lt;- phi(3:c, 8:c)
+   t &lt;- c &lt; x
+5: ifn t goto 9
+6: s &lt;- c + s
+7: c &lt;- c + 1
+8: goto 4
+9: rret &lt;- s 
+10: ret
+</code></pre>
+<p>Note that when we try to insert the phi assignment for <code>t</code> at <code>4</code>, we realize that there is only one operand. This is because <code>t</code> is not defined before label <code>4</code>. In this case we remove the phi assignment for <code>t</code>.</p>
+<h4 id="renaming-variables">Renaming Variables</h4>
+<p>Given an intermediate output like <code>PRE_SSA_PA1</code>, we need to rename the variable so that there is only one assignment for each variable.</p>
+<p>Inputs: </p>
+<ul>
+<li>a dictionary of stacks <code>K</code> where the keys are the variable names in the original PA program. e.g. <code>K(x)</code> returns the stack for variable <code>x</code>. </li>
+<li>
+<p>the input program in with phi assignment but oweing the variable renaming,  e.g. <code>PRE_SSA_PA1</code>. We view the program as a dictionary mapping labels to labeled instructions.</p>
+</li>
+<li>
+<p>For each variable <code>x</code> in the program, initialize <code>K(x) = Stack()</code>.</p>
+</li>
+<li>Let label <code>l</code> be the root of the dominator tree <span class="arithmatex">\(T\)</span>.</li>
+<li>Let <code>vars</code> be an empty list</li>
+<li>Match <code>P(l)</code> with<ol>
+<li>case <code>l: phis r &lt;- s</code><ol>
+<li><code>(phis', K, result_list) = processphi(phis, K, vars)</code></li>
+<li><code>s' = ren(K, s)</code></li>
+<li>set <code>Q(l)</code> to <code>l: phis' r &lt;- s'</code></li>
+</ol>
+</li>
+<li>case <code>l: phis r &lt;- s1 op s2</code><ol>
+<li><code>(phis', K, result_list) = processphi(phis, K, vars)</code></li>
+<li><code>s1' = ren(K, s1)</code></li>
+<li><code>s2' = ren(K, s2)</code></li>
+<li>set <code>Q(l)</code> to  <code>l: phis' r &lt;- s1' op s2'</code></li>
+</ol>
+</li>
+<li>case <code>l: phis x &lt;- s</code><ol>
+<li><code>(phis', K, result_list) = processphi(phis, K, vars)</code></li>
+<li><code>s' = ren(K, s)</code></li>
+<li><code>i = next(K,x)</code></li>
+<li>append <code>x</code> to <code>vars</code></li>
+<li>set <code>Q(l)</code> to <code>l: phis' x_i &lt;- s'</code></li>
+</ol>
+</li>
+<li>case <code>l: phis x &lt;- s1 op s2</code><ol>
+<li><code>(phis', K, result_list) = processphi(phis, K, vars)</code></li>
+<li><code>s1' = ren(K, s1)</code></li>
+<li><code>s2' = ren(K, s2)</code></li>
+<li><code>i = next(K,x)</code></li>
+<li>append <code>x</code> to <code>vars</code></li>
+<li>set <code>Q(l)</code> to  <code>l: phis' x_i &lt;- s1' op s2'</code></li>
+</ol>
+</li>
+<li>case <code>l: phis ifn t goto l'</code> <ol>
+<li><code>(phis', K, result_list) = processphi(phis, K, vars)</code></li>
+<li><code>t' = ren(K, t)</code></li>
+<li>set <code>Q(l)</code> to  <code>l: phis' ifn t' goto l'</code> </li>
+</ol>
+</li>
+<li>case <code>l: phis ret</code><ol>
+<li><code>(phis', K, result_list) = processphi(phis, K, vars)</code></li>
+<li>set <code>Q(l)</code> to <code>l: phis' ret</code></li>
+</ol>
+</li>
+<li>case <code>l: phis goto l'</code><ol>
+<li><code>(phis', K, result_list) = processphi(phis, K, vars)</code></li>
+<li>set <code>Q(l)</code> to <code>l: phis' goto l'</code></li>
+</ol>
+</li>
+</ol>
+</li>
+<li>For each successor <code>k</code> of <code>l</code> in the CFG <span class="arithmatex">\(G\)</span><ol>
+<li><code>R = if k in Q { Q } else { R }</code></li>
+<li>Pattern match <code>R(k)</code> <ol>
+<li>case <code>k: phis i</code><ol>
+<li>for each <code>x &lt;- phi(j:x', m:x'')</code> in <code>phis</code><ol>
+<li>if <code>K(origin(x))</code> is empty, do not add this phi assignment in the result list**.</li>
+<li>if <code>j == l</code>, <code>x &lt;- phi(j:ren(K,x'), m:x'')</code> into the result list</li>
+<li>if <code>m == l</code>, <code>x &lt;- phi(j:x', m:ren(K,x''))</code> into the result list</li>
+</ol>
+</li>
+<li>the result list is <code>phis'</code></li>
+<li>update <code>R(k)</code> to  <code>k: phis' i</code> </li>
+</ol>
+</li>
+<li>case <code>others</code>, no change</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>Recursively apply step 3 to the children of <code>l</code> in the <span class="arithmatex">\(T\)</span>.</li>
+<li>For each <code>x</code> in <code>vars</code>, <code>K(x).pop()</code></li>
+</ul>
+<p>Where <code>ren(K, s)</code> is defined as         </p>
+<pre><code>ren(K,c) = c
+ren(K, input) = input
+ren(K, r) = r
+ren(K, t) = K(t).peek() match 
+    case None =&gt; error("variable use before being defined.")
+    case Some(i) =&gt; t_i
+</code></pre>
+<p>and <code>next(K, x)</code> is defined as </p>
+<pre><code>next(K, x) = K(x).peek() match 
+    case None =&gt; 
+        K(x).push(1)
+        0
+    case Some(i) =&gt;
+        K(x).push(i+1)
+        i
+</code></pre>
+<p>and <code>processphi(phis, K)</code> is defined as </p>
+<pre><code>prcessphi(phis, K, vars) = 
+    foreach x &lt;- phi(j:x', k:x'') in phis
+        i = K(x).peek() + 1
+        K(x).push(i)
+        append x to vars
+        put x_i &lt;- phi(j:x', k:x'') into result_list
+    return (result_list, K, vars)
+</code></pre>
+<p>and <code>stem(x)</code> returns the original version of <code>x</code> before renaming, e.g. <code>stem(x) = x</code> and <code>stem(x1) = x</code>. We assume there exists some book-keeping mechanism to keep track of that the fact that <code>x</code> is the origin form of <code>x_1</code>.</p>
+<blockquote>
+<p>Note on **: In Cytron's paper, all variables must be initialized in the starting vertex of the program. This is not the case in our context. A temp variable can be created to handle nested binary operation, it is might not be initialized. This can be fixed by skipping any phi-assignment of which one of the preceding branch has no such variable assigned. This is sound as this would means 
+* The phi-assignment is not needed, in case of while statement where the variable is introduced in the while body, or 
+* The phi-assignment is not fully initialized, in case of if-else where the variable is only introduced in one of the branch.</p>
+</blockquote>
+<p>We describe the application the algorithm to <code>PRE_SSA_PA1</code> (with the dominator tree <code>Tree2_PA1</code> and CFG <code>Graph1_PA1</code>) with the following table.</p>
+<table>
+<thead>
+<tr>
+<th>label</th>
+<th>P(l)</th>
+<th>Q(l)</th>
+<th>K</th>
+<th>P(succ(l))</th>
+<th>Q(succ(l))</th>
+<th>vars</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>1:x&lt;-input</code></td>
+<td><code>1:x0&lt;-input</code></td>
+<td><code>{x:[0], s:[], c:[], t:[]}</code></td>
+<td></td>
+<td></td>
+<td><code>{1:{x}}</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>2:s&lt;-0</code></td>
+<td><code>2:s0&lt;-0</code></td>
+<td><code>{x:[0], s:[0], c:[], t:[]}</code></td>
+<td></td>
+<td></td>
+<td><code>{1:{x}, 2:{s}}</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>3:c&lt;-0</code></td>
+<td><code>3:c0&lt;-0</code></td>
+<td><code>{x:[0], s:[0], c:[0], t:[]}</code></td>
+<td><code>4:s&lt;-phi(3:s0,8:s);c&lt;-phi(3:c0,8:c);t&lt;-c&lt;x</code></td>
+<td></td>
+<td><code>{1:{x}, 2:{s}. 3:{c}}</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>4:s&lt;-phi(3:s0,8:s);c&lt;-phi(3:c0,8:c);t&lt;-c&lt;x</code></td>
+<td><code>4:s1&lt;-phi(3:s0,8:s);c1&lt;-phi(3:c0,8:c);t0&lt;-c1&lt;x0</code></td>
+<td><code>{x:[0], s:[0,1], c:[0,1], t:[0]}</code></td>
+<td></td>
+<td></td>
+<td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}}</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>5:ifn t goto 9</code></td>
+<td><code>5:ifn t0 goto 9</code></td>
+<td><code>{x:[0], s:[0,1], c:[0,1], t:[0]}</code></td>
+<td></td>
+<td></td>
+<td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}}</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>6:s&lt;-c+s</code></td>
+<td><code>6:s2&lt;-c1+s1</code></td>
+<td><code>{x:[0], s:[0,1,2], c:[0,1], t:[0]}</code></td>
+<td></td>
+<td></td>
+<td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}, 6:{s}}</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>7:c&lt;-c+1</code></td>
+<td><code>7:c2&lt;-c1+1</code></td>
+<td><code>{x:[0], s:[0,1,2], c:[0,1,2], t:[0]}</code></td>
+<td></td>
+<td></td>
+<td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}, 6:{s}, 7:{c}}</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>8:goto 4</code></td>
+<td><code>8:goto 4</code></td>
+<td><code>{x:[0], s:[0,1,2], c:[0,1,2], t:[0]}</code></td>
+<td></td>
+<td></td>
+<td><code>4:s1&lt;-phi(3:s0,8:s2);c1&lt;-phi(3:c0,8:c2);t0&lt;-c1&lt;x0</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>9:rret&lt;-s</code></td>
+<td><code>9:rret&lt;-s1</code></td>
+<td><code>{x:[0], s:[0,1], c:[0,1], t:[0]}</code></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}}</code></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>10:ret</code></td>
+<td><code>10:ret</code></td>
+<td><code>{x:[0], s:[0,1], c:[0,1], t:[0]}</code></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}}</code></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The label column denotes the current label  being considered.</li>
+<li>The P(l) column denotes the input labeled instruction being considered.</li>
+<li>The Q(l) column denotes the output labeled instruction.</li>
+<li>The K column denotes the set of stacks after the current recursive call.</li>
+<li>The P(succ(l)) column denotes the modified successor intruction in P, (this applies only when the instruction is not yet available in Q)</li>
+<li>The Q(succ(l)) column denotes the modified successor instruction in Q.</li>
+<li>The vars column denotes a mapping of recursive call (indexed by the current label) to the set of variables' ids have been generated (which require popping at the end of the recursive call).</li>
+</ul>
+<p>The above derivation eventually yield <code>SSA_PA1</code>.</p>
+<p>Note that in case of a variable being use before initialized, <code>ren(K, t)</code> will raise an error. </p>
+<h4 id="ssa-back-to-pseudo-assembly">SSA back to Pseudo Assembly</h4>
+<p>To convert a SSA back to Pseudo Assembly, we have to "resolve" the phi-assignments to by moving the branch-dependent assignment back to the preceding labeled instruction. For instance, translating <code>SSA_PA1</code> back to PA while keeping the renamed variables, we have </p>
+<pre><code class="language-java">// PA2
+1: x0 &lt;- input
+2: s0 &lt;- 0
+3: c0 &lt;- 0
+3: s1 &lt;- s0
+3: c1 &lt;- c0
+4: t0 &lt;- c1 &lt; x0
+5: ifn t0 goto 9
+6: s2 &lt;- c1 + s1
+7: c2 &lt;- c1 + 1
+8: s1 &lt;- s2
+8: c1 &lt;- c2
+8: goto 4
+9: rret &lt;- s1 
+10: ret
+</code></pre>
+<p>In the above we break the phi-assignments found in </p>
+<pre><code class="language-java">4: s1 &lt;- phi(3:s0, 8:s2)
+   c1 &lt;- phi(3:c0, 8:c2)
+   t0 &lt;- c1 &lt; x0
+</code></pre>
+<p>into </p>
+<p><code>PhiFor3</code></p>
+<pre><code class="language-java">s1 &lt;- s0 // for label 3
+c1 &lt;- c0
+</code></pre>
+<p>and </p>
+<p><code>PhiFor8</code></p>
+<pre><code class="language-java">s1 &lt;- s2 // for label 8
+c1 &lt;- c2
+</code></pre>
+<p>We move <code>PhiFor3</code> to label 3</p>
+<pre><code class="language-java">3:  c0 &lt;- 0
+3:  s1 &lt;- s0
+3:  c1 &lt;- c0
+</code></pre>
+<p>and <code>PhiFor8</code> to label 8</p>
+<pre><code class="language-java">8: s1 &lt;- s2
+8: c1 &lt;- c2
+8: goto 4
+</code></pre>
+<p>The "moving" phi-assignment operation can be defined in the following algorithm.</p>
+<h5 id="relocating-the-phi-assignments">Relocating the phi-assignments</h5>
+<p>Input: a PA program <span class="arithmatex">\(P\)</span> being viewed as a list of labeled instructions.
+Output: a PA program <span class="arithmatex">\(Q\)</span> being viewed as a list of labeled instructions. (duplicate labels are allowed in <span class="arithmatex">\(Q\)</span>)</p>
+<ol>
+<li>For each <span class="arithmatex">\(l: \overline{\phi}\ i \in P\)</span>, append <span class="arithmatex">\(l: i\)</span> to <span class="arithmatex">\(Q\)</span>.</li>
+<li>For each <span class="arithmatex">\(l: \overline{\phi}\ i\)</span>.<ol>
+<li>For each <code>x = phi(l1:x1, l2:x2)</code> in <span class="arithmatex">\(\overline{\phi}\)</span><ol>
+<li>append <code>l1:x &lt;- x1</code> and <code>l2:x &lt;- x2</code> to <span class="arithmatex">\(Q\)</span>.</li>
+<li>note that the relocated assignment must be placed before the control flow transition from <code>l1</code> to <code>succ(l1)</code> (and <code>l2</code> to <code>succ(l2)</code>) </li>
+</ol>
+</li>
+</ol>
+</li>
+<li>Sort <span class="arithmatex">\(Q\)</span> by labels using a stable sorting algorithm.</li>
+</ol>
+<p>Now since there are repeated labels in <code>PA2</code>, we need an extra relabelling step to convert <code>PA2</code> to <code>PA3</code></p>
+<pre><code class="language-java">// PA3
+1: x0 &lt;- input
+2: s0 &lt;- 0
+3: c0 &lt;- 0
+4: s1 &lt;- s0
+5: c1 &lt;- c0
+6: t0 &lt;- c1 &lt; x0
+7: ifn t0 goto 11
+8: s2 &lt;- c1 + s1
+9: c2 &lt;- c1 + 1
+10: s1 &lt;- s2
+11: c1 &lt;- c2
+12: goto 4
+13: rret &lt;- s1 
+14: ret
+</code></pre>
+<h5 id="relabelling">Relabelling</h5>
+<p>This re-labeling step can be described in the following algorithm.</p>
+<p>Input: a PA program <span class="arithmatex">\(P\)</span> being viewed as a list of labeled instructions. (duplicate labels are allowed in <span class="arithmatex">\(P\)</span>)
+Output: a PA program <span class="arithmatex">\(Q\)</span> being viewed as a list of labeled instructions.</p>
+<ol>
+<li>Initialize a counter <code>c = 1</code>,</li>
+<li>Initialize a mapping from old label to new label, <code>M = Map()</code>.</li>
+<li>Initialize <span class="arithmatex">\(Q\)</span> as an empty list</li>
+<li>For each <code>l: i</code> <span class="arithmatex">\(\in P\)</span><ol>
+<li><code>M = M + (l -&gt; c)</code></li>
+<li>incremeant <code>c</code> by 1</li>
+</ol>
+</li>
+<li>For each <code>l: i</code> <span class="arithmatex">\(\in P\)</span><ol>
+<li>append <code>M(l): relabel(i, M)</code> to <span class="arithmatex">\(Q\)</span></li>
+</ol>
+</li>
+</ol>
+<p>where <code>relabel(i, M)</code> is defined as follows</p>
+<pre><code>relabel(ifn t goto l,M) = ifn t goto M(l)
+relabel(goto l, M) = goto M(l)
+relabel(i, M) = i
+</code></pre>
+<h2 id="structured-ssa">Structured SSA</h2>
+<p>Besides unstructured SSA, it is possible to construct SSA based on a structured program such as SSA. For instance, </p>
+<pre><code class="language-java">x = input;
+s = 0;
+c = 0;
+while c &lt; x {
+    s = c + s;
+    c = c + 1;
+}
+return s;
+</code></pre>
+<p>Can be converted into a structured SSA </p>
+<pre><code class="language-java">x1 = input;
+s1 = 0;
+c1 = 0;
+join { s2 = phi(s1,s3); c2 = phi(c1,c3); } 
+while c2 &lt; x1 {
+    s3 = c2 + s2;
+    c3 = c2 + 1;
+}
+return s2;
+</code></pre>
+<p>In the above SSA form, we have a <code>join ... while ...</code> loop. 
+The join clause encloses the phi assignments merging variable definitions coming from the statement preceding the join while loop and 
+also the body of the loop.  (Similarly we can introduce a <code>if ... else ... join ...</code> statement).</p>
+<p>Structured SSA allows us to </p>
+<ol>
+<li>conduct name analysis closer to the source language. </li>
+<li>
+<p>conduct flow insensitive analysis by incorporating the use-def information. In some cases we get same precision as the flow sensitive analysis. </p>
+</li>
+<li>
+<p>perform code obfuscation. </p>
+</li>
+</ol>
+<h3 id="futher-readings">Futher Readings</h3>
+<ul>
+<li>https://dl.acm.org/doi/10.1145/2955811.2955813</li>
+<li>https://dl.acm.org/doi/abs/10.1145/3605156.3606457</li>
+<li>https://dl.acm.org/doi/10.1145/202530.202532</li>
+</ul></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../js/jquery-3.6.0.min.js"></script>
+<script src="../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../js/base.js"></script>
+<script src="../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

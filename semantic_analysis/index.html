@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="../img/favicon.ico" rel="shortcut icon"/>
+<title>50.054 - Semantic Analysis - Compiler Design and Program Analysis 50.054</title>
+<link href="../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../css/font-awesome.min.css" rel="stylesheet"/>
+<link href="../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="..">Compiler Design and Program Analysis 50.054</a>
+<!-- Expander button -->
+<button class="navbar-toggler" data-target="#navbar-collapse" data-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="navitem">
+<a class="nav-link" href="..">Home</a>
+</li>
+<li class="navitem">
+<a class="nav-link" href="../notes/handout/">Handout</a>
+</li>
+</ul>
+<ul class="nav navbar-nav ml-auto">
+<li class="nav-item">
+<a class="nav-link" data-target="#mkdocs_search_modal" data-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-target="#toc-collapse" data-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-secondary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-level="1"><a class="nav-link" href="#50054-semantic-analysis">50.054 - Semantic Analysis</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-level="2"><a class="nav-link" href="#learning-outcomes">Learning Outcomes</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#what-is-program-semantic">What is Program Semantic</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-level="2"><a class="nav-link" href="#semantics-analysis">Semantics Analysis</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="50054-semantic-analysis">50.054 - Semantic Analysis</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Articulate the meaning of program semantics</li>
+<li>List different types of program semantics.</li>
+<li>Explain the limitation of static analysis. </li>
+</ol>
+<h2 id="what-is-program-semantic">What is Program Semantic</h2>
+<p>In contrast to program syntax which defines the validity of a program, the program semantics define the behavior of a program.</p>
+<h3 id="dynamic-semantics">Dynamic Semantics</h3>
+<p>Dynamic Semantics defines the meaning and behaviors of the given program. The term "behavior" could mean</p>
+<ol>
+<li>How does the program get executed?</li>
+<li>What does the program compute / return?</li>
+</ol>
+<h3 id="static-semantics">Static Semantics</h3>
+<p>Static Semantics describes a set of properties that the given program holds. For example,
+a typing system (a kind of static semantics) ensures that a well-typed program is free of run-time type errors such as
+using a string variable in the context of an if condition expression, or adding a float value to a character value.</p>
+<h2 id="semantics-analysis">Semantics Analysis</h2>
+<p>Recall the compiler pipeline</p>
+<div class="mermaid">graph LR
+A[Lexing] --&gt;B[Parsing] --&gt; C[Semantic Analysis] --&gt; D[Optimization] --&gt; E[Target Code Generation]
+</div>
+<p>But in fact it could be</p>
+<div class="mermaid">graph LR
+A[Lexing] --&gt;B[Parsing] --&gt; C[Semantic Analysis] --&gt; D[Optimization] --&gt; E[Target Code Generation]
+D --&gt; C
+</div>
+<ul>
+<li>Lexing</li>
+<li>Input: Source file in String</li>
+<li>Output: A sequence of valid tokens according to the language specification (grammar)</li>
+<li>Parsing</li>
+<li>Input: Output from the Lexer</li>
+<li>Output: A parse tree representing parsed result according to the parse derivation</li>
+<li>Semantic Analysis</li>
+<li>Input: A parse tree or an internal representation<ul>
+<li>a source parse tree is considered an internal representation</li>
+</ul>
+</li>
+<li>Output:<ul>
+<li>if succeeds, a parse tree or an internal representation</li>
+<li>otherwise, an error report</li>
+</ul>
+</li>
+</ul>
+<h3 id="goal-of-semantic-analysis">Goal of Semantic Analysis</h3>
+<p>There mainly two goals of semantic analysis.</p>
+<h4 id="optimization">Optimization</h4>
+<pre><code class="language-js">x = input;
+y = 0;
+s = 0;
+while (y &lt; x) { 
+    y = y + 1;
+    t = s;  // t is not used.
+    s = s + y;  
+}
+return s;
+</code></pre>
+<h4 id="fault-detection">Fault Detection</h4>
+<pre><code class="language-js">x = input; 
+
+while (x &gt;= 0) {
+    x = x - 1;
+}
+y = Math.sqrt(x); // error, can't apply sqrt() to a negative number.
+return y;
+</code></pre>
+<h3 id="dynamic-semantics-analysis">Dynamic Semantics Analysis</h3>
+<p>Dynamic semantics analysis aims to find faults and ascertains quality by supplying actual inputs to the target programs.
+The following are some of the commony used techniques, (we have learned some of them in other modules).</p>
+<ol>
+<li>Testing</li>
+<li>Run-time verification - analyse the target programs with instrumentation by checking the logs and traces against its specification.</li>
+<li>Program Slicing - try to decompose a program into "slices", small units of codes, that exhibit the behaviors of interests.</li>
+</ol>
+<h3 id="static-semantic-analysis">Static Semantic Analysis</h3>
+<p>Static Semantic Analysis focuses on achieving the same goal as dynamic semantic analysis by analysing the given program without actually running it.</p>
+<ol>
+<li>Type checking and type inference</li>
+<li>Control flow analysis - to determine the control flow graph of a given program. It gets harder has higher order function and function pointers introduced.</li>
+<li>Data flow analysis - the goal is determine the possible values being held by a variable at a particular program location.</li>
+<li>Model checking - given a specification, to reason the program's correctness using a math model, e.g. logic constraints.</li>
+</ol>
+<p>The advantage is that we gain some generality of the results without worry about the limitation of code coverage. The disadvantage is that we often loose accuracy through approximation</p>
+<h3 id="limitation-of-static-semantic-analysis">Limitation of Static Semantic Analysis</h3>
+<p>It follow Rice's theorem that all non-trivial semantic properties of programs are undecidable. i.e. there exists no algorithm that can decide all semantic properties for all given programs.</p>
+<p>For example, assume we can find an algorithm that determine whether the variable <code>x</code> in the following function is positive or negative without executing it. </p>
+<pre><code class="language-python">def f(path):
+  p = open(path, "r")
+  x = 1
+  if eval(p):
+    x = -1
+  return x
+</code></pre>
+<p>In the above program the analysis of <code>x</code>'s sign (positive or negative) is subject to whether <code>eval(p)</code> is <code>true</code> or <code>false</code>. If such an algorithm exists, as a side effect we can also statically detect whether the given program in <code>path</code> is terminating, which is of course undecidable. </p></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../js/jquery-3.6.0.min.js"></script>
+<script src="../js/bootstrap.min.js"></script>
+<script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../js/base.js"></script>
+<script src="../javascripts/mathjax.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button class="close" data-dismiss="modal" type="button"><span aria-hidden="true">×</span><span class="sr-only">Close</span></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

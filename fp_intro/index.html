@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>50.054 - Introduction to functional programming - Compiler Design and Program Analysis 50.054</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Compiler Design and Program Analysis 50.054</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../notes/handout/" class="nav-link">Handout</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#50054-introduction-to-functional-programming" class="nav-link">50.054 - Introduction to functional programming</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#learning-outcomes" class="nav-link">Learning Outcomes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#what-is-functional-programming" class="nav-link">What is Functional programming?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#how-fp-differs-from-other-programming-languages" class="nav-link">How FP differs from other programming languages?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#why-fp-in-compiler-design" class="nav-link">Why FP in Compiler Design?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#lambda-calculus" class="nav-link">Lambda Calculus</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#summary" class="nav-link">Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="50054-introduction-to-functional-programming">50.054 - Introduction to functional programming</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<p>By the end of this lesson, you should be able to:</p>
+<ul>
+<li>Characterize functional programming</li>
+<li>Comprehend, evaluate lambda terms</li>
+<li>Differentiate different evaluation strategies</li>
+<li>Implement simple algorithms using Lambda Calculus</li>
+</ul>
+<h2 id="what-is-functional-programming">What is Functional programming?</h2>
+<p>Functional programming as suggested by its name, is a programming paradigm in which functions are first class values.
+In the ideal model of FP, computations are stateless. Variables are bound once and remain unchanged afterwards. Computation is performed
+by rewriting the current expression into the (reduced) expression via evaluation rules.</p>
+<h2 id="how-fp-differs-from-other-programming-languages">How FP differs from other programming languages?</h2>
+<p>The main differences were listed in the earlier section.</p>
+<p>However many modern program languages (including those are not FP) adopted many "features" from the functional programming paradigm. It has been proven that the FP coding style improves code qualities in many aspects.</p>
+<p>Consider the following two different implementations of the insertion sort algorithm (assuming that the readers having prior knowledge of Python and insertion sort algorithm):</p>
+<pre><code class="language-python">def isort(vals):
+   for i in range(1, len(vals)):
+      curr = i   
+      for j in range(i, 0, -1):
+         # scan backward to insert vals[curr] into the right pos
+         if vals[curr] &gt; vals[j-1]:
+            vals[curr], vals[j-1] = vals[j-1], vals[curr]
+            curr = j-1
+   return vals
+</code></pre>
+<pre><code class="language-python">def isort2(vals):
+   def insert(x, xs):
+      # invarant: xs is already sorted in descending order
+      if len(xs) &gt; 0:
+         if x &gt; xs[0]:
+            return [x] + xs
+         else:
+            return [xs[0]] + insert(x, xs[1:])
+      else:
+         return [x]
+   def isort_sub(sorted, to_be_sorted):
+      # invariant sorted is already sorted in descending order
+      if len(to_be_sorted) &gt; 0:
+         val = to_be_sorted[0]
+         to_be_sorted_next = to_be_sorted[1:]
+         sorted_next = insert(val, sorted)
+         return isort_sub(sorted_next, to_be_sorted_next)
+      else:
+         return sorted
+   return isort_sub([], vals)
+</code></pre>
+<p><code>isort</code> is implemented in the imperative style; the way we are familiar with.</p>
+<p><code>isort2</code> is implemented in a functional programming style, we've seen it but we are not too familar with it.
+We probably won't code in <code>isort2</code> in Python, because:</p>
+<ol>
+<li>it is lengthy</li>
+<li>it is less efficient, as it involves recursion (function call stack is building up) and there are too many list slicing and concatenation operations.</li>
+</ol>
+<p>But why are people are interested in FP? The reason is that the invariant of <code>isort</code> is much harder to derive compared to <code>isort2</code>
+in which the nested functions' parameters are the subject of the invariants, and the variables in <code>isort2</code> are mostly immutable, i.e.
+they don't change over execution, and we won't need symbolic execution or variable renaming.</p>
+<p>Furthermore in some FP languages with advanced typing systems such as type constraints and dependent types, these invariants in <code>isort2</code>
+can be expressed as type constraints, which can be verified by the compiler.</p>
+<p>What about the inefficiency? Most of the FP compilers handle recursions with care and are able to optimize them into efficient code.
+Data structure in FP are inductively defined, and optimizations such as shallow cloning are used to avoid data structure reconstruction.</p>
+<p>In fact many modern FP languagues are quite fast. For example:</p>
+<ul>
+<li><a href="https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/ghc-clang.html">https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/ghc-clang.html</a></li>
+<li><a href="https://thume.ca/2019/04/29/comparing-compilers-in-rust-haskell-c-and-python/">https://thume.ca/2019/04/29/comparing-compilers-in-rust-haskell-c-and-python/</a></li>
+</ul>
+<h2 id="why-fp-in-compiler-design">Why FP in Compiler Design?</h2>
+<p>Implementing a compiler requires rigorous software design and engineering principles. Bugs arising from a compiler have severe implication in softwares developed in the language that it compiles.</p>
+<p>To establish correctness results, testing is not sufficient to eliminate errors in the compilers. When designing a compiler, we often begin with formal reasoning with mathematical foundation as the specification. As we learn later in this module, these specifications are presented in a form in which resembles the data structures and accessor methods found in many functional programming languages. Thus, it is arguably easier to implement the given specification in function programs compared to other programming paradigms.</p>
+<p>One key difference is that in FP, there is no for-loop or while-loop. Iteration has to be implemented via recursive functions.</p>
+<p>This implies that loop invariances are not constraints among the input and output of these recurisve function.</p>
+<p>In many main stream functional programming languages, such as Ocaml, Haskell and Scala are shipped with powerful type systems which allow us to express some of the properties of the algorithms in terms of type constraints, by doing so, these (invariant) properties are verifiable by the compilers of function programming languages.</p>
+<h2 id="lambda-calculus">Lambda Calculus</h2>
+<p><em>Lambda Calculus</em> is the minimal core of many functional programming languages.
+It consists of the <em>Lambda expression</em> and the <em>evaluation rule(s)</em>.</p>
+<h3 id="lambda-expression">Lambda Expression</h3>
+<blockquote>
+<p><a href="https://imgur.com/gallery/XBHub">This comic gives a very easy way to understand Lambda Expressions</a></p>
+</blockquote>
+<p>The valid syntax of lambda expression is described as the following EBNF (<a href="https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form">Extended Backus Naur Form</a>) grammar:</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+ {\tt (Lambda\ Terms)} &amp; t &amp; ::= &amp; x \mid \lambda x.t \mid t\ t
+\end{array}
+\]</div>
+<p>Where:</p>
+<ul>
+<li>Each line denotes a grammar rule</li>
+<li>The left hand side (LHS) of the <code>::=</code> is a non-terminal symbol, in this case <span class="arithmatex">\(t\)</span> is a non-terminal symbol.</li>
+<li>The RHS of the <code>::=</code> is a set of alternatives, separated by <code>|</code>. Each alternative denote a possible outcome of expanding the LHS non-terminal. In this case <span class="arithmatex">\(t\)</span> has three possibilities, i.e. <span class="arithmatex">\(x\)</span>, <span class="arithmatex">\(\lambda x.t\)</span> or <span class="arithmatex">\(t\ t\)</span>.</li>
+<li><span class="arithmatex">\(x\)</span> denotes a variable,</li>
+<li><span class="arithmatex">\(\lambda x.t\)</span> denotes a lambda abstraction.</li>
+<li>Within a lambda abstraction,  <span class="arithmatex">\(x\)</span> is the bound variable (c.f. formal argument of the function)
+and <span class="arithmatex">\(t\)</span> is the body.</li>
+<li><span class="arithmatex">\(t\ t\)</span> denotes a function application.</li>
+</ul>
+<p>For example, the following are three instances of <span class="arithmatex">\(t\)</span>.</p>
+<ol>
+<li><span class="arithmatex">\(x\)</span></li>
+<li><span class="arithmatex">\(\lambda x.x\)</span></li>
+<li><span class="arithmatex">\((\lambda x.x)\ y\)</span></li>
+</ol>
+<p>Note that given a lambda term, there might be multiple ways of parsing (interpreting) it. For instance,
+Given <span class="arithmatex">\(\lambda x.x\ \lambda y.y\)</span>, we could interpret it as either</p>
+<ol>
+<li><span class="arithmatex">\((\lambda x.x)\ (\lambda y.y)\)</span>, or</li>
+<li><span class="arithmatex">\(\lambda x.(x\ \lambda y.y)\)</span></li>
+</ol>
+<p>As a convention, in the absence of parentheses, we take 2 as the default interpretation. We should include parentheses whenever ambiguity arise as much as we can.</p>
+<h3 id="evaluation-rules">Evaluation Rules</h3>
+<p>Lambda calculus is very simple and elegant. To execute (or we often say "to evaluate") a given lambda term, we apply the evaluation rules to rewrite the term.</p>
+<p>There are only two rules to consider.</p>
+<p>Each rule is defined via a reduction relation <span class="arithmatex">\(t \longrightarrow t'\)</span>, which reads as <span class="arithmatex">\(t\)</span> is reduced to <span class="arithmatex">\(t'\)</span> by a step.</p>
+<h4 id="beta-reduction">Beta Reduction</h4>
+<div class="arithmatex">\[
+\begin{array}{rl}
+{\tt (\beta\ reduction)} &amp; (\lambda x.t_1)\ t_2 \longrightarrow [t_2/x] t_1
+\end{array}
+\]</div>
+<p>What's new here is the term <span class="arithmatex">\([t_2/x]\)</span>, which is a meta term, which
+refers to a substitution. <span class="arithmatex">\([t_2/x]t_1\)</span> denotes the application of the
+substitution <span class="arithmatex">\([t_2/x]\)</span> to <span class="arithmatex">\(t_1\)</span>, Informally speaking it means we
+replace every occurrence of the formal argument <span class="arithmatex">\(x\)</span> in <span class="arithmatex">\(t_1\)</span> with <span class="arithmatex">\(t_2\)</span>.</p>
+<p>For instance, recall our earlier example:</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+(\lambda x.x)\ (\lambda y.y) &amp;
+\longrightarrow_{\scriptsize {\tt (\beta\ reduction)}} \\
+\lbrack(\lambda y.y)/x \rbrack x &amp; \longrightarrow _{\scriptsize {\tt (substitution)}} \\
+\lambda y.y
+\end{array}
+\]</div>
+<p>It is common understanding in programming that there are scopes of
+variables. We can reuse the same name for different variables in
+different scopes without affecting the meanings of the program.
+Consider a variant of our running example:</p>
+<div class="arithmatex">\[
+ (\lambda x.x)\ {\tt (\lambda x. x)}
+\]</div>
+<p>Here, we use a different font type for variables named <span class="arithmatex">\(x\)</span> in different scopes.
+<span class="arithmatex">\(x\)</span> is bound in the first lambda abstraction and<br />
+<span class="arithmatex">\({\tt x}\)</span> is bound in the second lambda abstraction. It behaves the
+same as the original running example except for the name of the
+variable in the second lambda abstraction.</p>
+<p>To formally define the substitution operation used in the
+<span class="arithmatex">\(\beta\)</span> reduction rule, we need to compute the free variables,
+i.e. variables that are not bound.</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+fv(x) &amp; = &amp; \{x\}\\
+fv(\lambda x.t) &amp; = &amp; fv(t) - \{x\} \\
+fv(t_1\ t_2) &amp; = &amp; fv(t_1) \cup fv(t_2)
+\end{array}
+\]</div>
+<p>For instance.</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+fv(\lambda x.x) &amp; = &amp; fv(x) - \{x\} \\
+                &amp; = &amp; \{ \}
+\end{array}
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+fv(\lambda x.x\ (\lambda z.y\ z)) &amp; = &amp; fv(x\ (\lambda z.y\ z)) - \{x\}
+\\
+   &amp; = &amp; (\{x\} \cup fv(\lambda z.y\ z)) - \{x\} \\
+   &amp; = &amp; (\{x\} \cup (fv(y\ z) - \{z\})) - \{x\} \\
+   &amp; = &amp; (\{x\} \cup ((\{y\} \cup \{z\}) - \{z\})) - \{x\} \\
+   &amp; = &amp; (\{x\} \cup (\{y, z\} - \{z\})) - \{x\} \\
+   &amp; = &amp; \{ y \}
+\end{array}
+\]</div>
+<p>One common error we often encounter is <em>capturing the free variables</em>.</p>
+<p>Consider:</p>
+<div class="arithmatex">\[
+(\lambda x. \lambda y.x\ y)\ ({\tt y}\ w)
+\]</div>
+<p>Note:</p>
+<div class="arithmatex">\[
+fv((\lambda x. \lambda y.x\ y)\ ({\tt y}\ w)) =  \{ {\tt y}, w \}
+\]</div>
+<p>Thus:</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+(\lambda x. \lambda y.x\ y)\ ({\tt y}\ w) &amp; \longrightarrow \\
+\lbrack({\tt y}\ w)/x\rbrack \lambda y.x\ y &amp; \longrightarrow  \\
+\lambda y. ({\tt y}\ w)\ y
+\end{array}
+\]</div>
+<p>Error! We captured the free variable <span class="arithmatex">\({\tt y}\)</span> in the lambda
+abstraction accidentally via substitution.
+Now the free variable <span class="arithmatex">\({\tt y}\)</span> is "mixed up" with the lambda bound variable <span class="arithmatex">\(y\)</span> by mistake.</p>
+<h4 id="substitution-and-alpha-renaming">Substitution and Alpha Renaming</h4>
+<p>In the following we consider all the possible cases for subsititution</p>
+<div class="arithmatex">\[
+\begin{array}{rcll}
+ \lbrack t_1 / x \rbrack x &amp; = &amp; t_1 \\
+ \lbrack t_1 / x \rbrack y &amp; = &amp; y &amp; {\tt if}\  x \neq y \\
+ \lbrack t_1 / x \rbrack (t_2\ t_3) &amp; = &amp; \lbrack t_1 / x \rbrack t_2\
+ \lbrack t_1 / x \rbrack t_3 &amp; \\
+ \lbrack t_1 / x \rbrack \lambda y.t_2 &amp; = &amp; \lambda y. \lbrack t_1 / x
+ \rbrack t_2 &amp; {\tt if}\  y\neq x\  {\tt and}\  y \not \in fv(t_1)
+\end{array}
+\]</div>
+<p>In case  </p>
+<div class="arithmatex">\[
+y\neq x\  {\tt and} \ y \not \in fv(t_1)
+\]</div>
+<p>is not satified, we need to rename the lambda bound variables that are clashing. Recall:</p>
+<div class="arithmatex">\[
+(\lambda x. \lambda y.x\ y)\ ({\tt y}\ w)
+\]</div>
+<p>We rename the inner lambda bound variable <span class="arithmatex">\(y\)</span> to <span class="arithmatex">\(z\)</span>:</p>
+<div class="arithmatex">\[
+(\lambda x. \lambda z.x\ z)\ ({\tt y}\ w)
+\]</div>
+<p>to avoid clashing, prior applying the <span class="arithmatex">\(\beta\)</span> reduction.
+The renaming operation is also known as the <span class="arithmatex">\(\alpha\)</span> renaming.</p>
+<h3 id="evaluation-strategies">Evaluation strategies</h3>
+<p>So far we have three rules (roughly)  $\beta $ reduction, substitution, and  $\alpha $ renaming.</p>
+<p>Given a lambda term, in order to evaluate it, we need to identify places that we can apply these rules.</p>
+<p>We call a (sub-)expression of shape <span class="arithmatex">\(\lambda x.t_1\ t_2\)</span> a <em>redex</em>.</p>
+<p>The task is to look for redexes in a lambda term and rewrite them by applying  $\beta $ reduction and substitution, and sometimes  $\alpha $ renaming to avoid capturing free variables.</p>
+<p>But in what order shall we apply these rules?</p>
+<p>There are two mostly known strategies</p>
+<ol>
+<li>Inner-most, leftmost - Applicative Order Reduction (AOR)</li>
+<li>Outer-most, leftmost - Normal Order Reduction (NOR)</li>
+</ol>
+<p>Consider $(\lambda x. ((\lambda x. x)\ x))\ (\lambda y.y) $,</p>
+<ul>
+<li>AOR:</li>
+</ul>
+<div class="arithmatex">\[
+\begin{array}{rll}
+(\lambda x. (\underline{(\lambda x. x)\ x}))\ (\lambda y.y)  &amp;
+\longrightarrow_{\tt (\beta\ reduction)} &amp;\\
+\underline{(\lambda x.x)\ (\lambda y.y)}  &amp; \longrightarrow_{\tt (\beta\ reduction)} \\
+\lambda y.y
+\end{array}
+\]</div>
+<ul>
+<li>NOR:</li>
+</ul>
+<div class="arithmatex">\[
+\begin{array}{rl}
+\underline{(\lambda x. ((\lambda x. x)\ x))}\ (\lambda y.y)  &amp;
+\longrightarrow_{\tt(\alpha)} \\
+\underline{(\lambda z. [z/x]((\lambda x.x)\ x))}\ (\lambda y.y) &amp; \longrightarrow_{\tt (substitution)} \\
+\underline{(\lambda z. ((\lambda x. x)\ z))\ (\lambda y.y)}  &amp;
+\longrightarrow_{\tt(\beta)} \\  
+\underline{(\lambda x. x)\ (\lambda y.y)} &amp;
+\longrightarrow_{\tt (\beta)}  \\
+\lambda y.y
+\end{array}
+\]</div>
+<h4 id="interesting-notes">Interesting Notes</h4>
+<ol>
+<li>Some connection with real world languages:</li>
+<li>Call By Value semantics (CBV, found in C, C++, etc.) is like AOR except that we do not evaluate under lambda abstractions.</li>
+<li>
+<p>Call By Name semantics (CBN, found in Haskell, etc.) is like NOR except that we do not evaluate under lambda abstractions.</p>
+</li>
+<li>
+<p>AOR or NOR, which one is better?</p>
+</li>
+<li>By Church-Rosser Theorem, if a lambda term can be evaluated in
+  two different ways and both ways terminate, both will yield the same
+  result.</li>
+<li>Recall our earlier example.</li>
+<li>
+<p>So how can it be non-terminating? Consider:</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+(\lambda x.x\ x)\ (\lambda x.x\ x) &amp; \longrightarrow
+\\
+\lbrack(\lambda x.x\ x)/x\rbrack (x\ x) &amp; \longrightarrow
+\\
+(\lambda x.x\ x)\ (\lambda x.x\ x)  &amp; \longrightarrow
+\\
+...
+\end{array}
+\]</div>
+</li>
+<li>
+<p>NOR seems computationally more expensive, but is also more likely to terminate than AOR. Consider how
+    <span class="arithmatex">\(((\lambda x.\lambda y.x)\ x)\  ((\lambda x.x\ x)\ (\lambda x.x\ x))\)</span> terminates in NOR with <span class="arithmatex">\(x\)</span>, but diverges in AOR.</p>
+</li>
+<li>NOR can be used to evaluate terms that deals with infinite data.</li>
+</ol>
+<h3 id="let-binding">Let Binding</h3>
+<p>Let-binding allows us to introduce local (immutable) variables.</p>
+<h4 id="approach-1-extending-the-syntax-and-evaluation-rules">Approach 1 - extending the syntax and evaluation rules</h4>
+<p>We extend the syntax with let-binding:</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+ {\tt (Lambda\ Terms)} &amp; t &amp; ::= &amp; x \mid \lambda x.t \mid t\ t \mid let\ x=\ t\ in\ t
+\end{array}
+\]</div>
+<p>and the evaluation rule:</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+{\tt (Let)} &amp; let\ x=t_1\ in\ t_2 \longrightarrow [t_1/x]t_2 \\ \\
+\end{array}
+\]</div>
+<p>and the substitution rule and the free variable function <span class="arithmatex">\(fv()\)</span>:</p>
+<div class="arithmatex">\[
+\begin{array}{rcl}
+\lbrack t_1 / x \rbrack let\ y = t_2\ in\ t_3 &amp; = &amp; let\ y = \lbrack t_1 / x \rbrack t_2\ in\ \lbrack t_1 / x \rbrack t_3 &amp; {\tt if}\  y\neq x\  {\tt and}\  y \not \in fv(t_1) \\
+\end{array} 
+$$
+$$
+\begin{array}{rcl}
+fv(let\ x=t_1\ in\ t_2) &amp; = &amp; (fv(t_1) - \{x\}) \cup fv(t_2) \\
+\end{array}
+\]</div>
+<p>Note that the alpha renaming should be applied when name clash arises.</p>
+<h4 id="approach-2-desugaring">Approach 2 - desugaring</h4>
+<p>In the alternative approach, we could use a pre-processing step to desugar the let-binding into an application. In compiler context, <em>desugaring</em> refers to the process of rewriting the source code from some high-level form to the core language.</p>
+<p>We can rewrite:</p>
+<div class="arithmatex">\[
+let\ x=t_1\ in\ t_2
+\]</div>
+<p>into:</p>
+<div class="arithmatex">\[
+(\lambda x.t_2)\ t_1
+\]</div>
+<p>where <span class="arithmatex">\(x \not\in fv(t_1)\)</span>.</p>
+<blockquote>
+<p>What happen if <span class="arithmatex">\(x \in fv(t_1)\)</span>? It forms a recursive definition. We will look into recursion in a later section.</p>
+</blockquote>
+<h3 id="conditional-expression">Conditional Expression</h3>
+<p>A language is pretty much useless without conditional <span class="arithmatex">\(if\ t_1\ then\ t_2\ else\ t_3\)</span>. There are at least
+two different ways of incorporating conditional expression in our lambda term language.</p>
+<h4 id="approach-1-extending-the-syntax-and-the-evaluation-rules">Approach 1 - Extending the syntax and the evaluation rules</h4>
+<p>We could extend the grammar</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+ {\tt (Lambda\ Terms)} &amp; t &amp; ::= &amp; x \mid \lambda x.t \mid t\ t \mid let\ x=\ t\ in\ t \mid  if\ t\ then\ t\ else\ t \mid t\ op\ t \mid c \\
+ {\tt (Builtin\ Operators)} &amp; op &amp; ::= &amp; + \mid - \mid * \mid / \mid\ == \\
+ {\tt (Builtin\ Constants)} &amp; c &amp; ::= &amp; 0 \mid 1 \mid ... \mid true \mid false
+\end{array}
+\]</div>
+<p>and the evaluation rules</p>
+<div class="arithmatex">\[
+\begin{array}{rc}
+{\tt (\beta\ reduction)} &amp; (\lambda x.t_1)\ t_2 \longrightarrow [t_2/x] t_1 \\ \\
+{\tt (ifI)} &amp; \begin{array}{c}
+               t_1 \longrightarrow t_1'  \\
+               \hline
+               if\ t_1\ then\ t_2\ else\ t_3 \longrightarrow if\ t_1'\ then\ t_2\ else\ t_3
+               \end{array} \\ \\
+{\tt (ifT)} &amp;  if\ true\ then\ t_2\ else\ t_3 \longrightarrow t_2 \\ \\
+{\tt (ifF)} &amp;  if\ false\ then\ t_2\ else\ t_3 \longrightarrow t_3 \\ \\
+{\tt (OpI1)} &amp; \begin{array}{c}
+                t_1 \longrightarrow t_1' \\
+                \hline
+                t_1\ op\ t_2\  \longrightarrow t_1'\ op\ t_2
+                \end{array} \\ \\
+{\tt (OpI2)} &amp; \begin{array}{c}
+                t_2 \longrightarrow t_2' \\
+                \hline
+                c_1\ op\ t_2\  \longrightarrow c_1\ op\ t_2'
+                \end{array} \\ \\
+{\tt (OpC)} &amp;  \begin{array}{c}
+                invoke\ low\ level\ call\  op(c_1, c_2) = c_3 \\
+                \hline  
+                c_1\ op\ c_2\  \longrightarrow c_3
+                \end{array} \\ \\
+                ...
+\end{array}
+\]</div>
+<p>In the above we use a horizontal line to separate complex deduction rules that have some premise. The relations and statement written above the horizontal line are called the <strong>premises</strong>, and the relation the written below is called the <strong>conclusion</strong>. The conclusion holds if the premises are valid.</p>
+<ul>
+<li>The rule ${\tt (ifI)} $ states that if we can evaluate  <span class="arithmatex">\(t_1\)</span> to  $t_1' $, then  $if\ t_1\ then\ t_2\ else\ t_3 $ can be evaluated to  $if\ t_1' \ then\ t_2\ else\ t_3 $. In otherwords, for us to reduce $if\ t_1\ then\ t_2\ else\ t_3 $ to $if\ t_1' \ then\ t_2\ else\ t_3 $, a pre-condition is to reduce <span class="arithmatex">\(t_1\)</span> to <span class="arithmatex">\(t_1'\)</span>. </li>
+<li>The rule  ${\tt (ifT)} $ states that if the conditional expression is <span class="arithmatex">\(true\)</span>, the entire term is evaluated to the then-branch.</li>
+<li>The rule  ${\tt (ifF)} $ is similar. Rules  <span class="arithmatex">\({\tt (OpI1)}\)</span> and ${\tt (OpI2)} $ are similar to rule <span class="arithmatex">\({\tt (IfI)}\)</span>.</li>
+<li>The rule  ${\tt (OpC)} $ invokes the built-in low level call to apply the binary operation to the two operands  $c_1 $ and  $c_2 $.  </li>
+</ul>
+<p>The substitution rules and free variable function <span class="arithmatex">\(fv()\)</span> also extended too
+$$
+\begin{array}{rcll}
+ \lbrack t_1 / x \rbrack c &amp; = &amp; c \ 
+   \lbrack t_1 / x \rbrack t_2\ op\ t_3 &amp; = &amp; (\lbrack t_1 / x \rbrack t_2)\ op\ (\lbrack t_1 / x \rbrack t_3) \ 
+  \lbrack t_1 / x \rbrack if\ t_2\ then\ t_3\ else\ t_4 &amp; = &amp; if\ \lbrack t_1 / x \rbrack t_2\ then\ \lbrack t_1 / x \rbrack t_3\ else\ \lbrack t_1 / x \rbrack t_4 \ 
+\end{array}
+$$
+$$
+\begin{array}{rcl}
+fv(t_1\ op\ t_2) &amp; = &amp; fv(t_1) \cup fv(t_2) \ 
+fv(if\ t_1\ then\ t_2\ else\ t_3) &amp; = &amp; fv(t_1) \cup fv(t_2) \cup fv(t_3) \
+fv(c) &amp; = &amp; {} \
+\end{array}
+$$
+Let's consider an example:</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+(\lambda x.if\ x==0\ then\  0\  else\  10/x)\ 2 &amp; \longrightarrow_{\scriptsize {\tt \beta}} \\
+\lbrack 2/x \rbrack if\ x==0\ then\  0\  else\  10/x &amp; \longrightarrow_{\scriptsize {\tt (substitution)}} \\
+if\ 2==0\ then\  0\  else\  10/2 &amp; \longrightarrow_{\scriptsize {\tt (IfI)}} \\
+if\ false\ then\ 0\  else\  10/2 &amp; \longrightarrow_{\scriptsize {\tt (IfF)}} \\
+10/2 &amp; \longrightarrow_{\scriptsize {\tt (OpC)}} \\
+5
+\end{array}
+\]</div>
+<h4 id="approach-2-church-encoding">Approach 2 - Church Encoding</h4>
+<p>Instead of extending the syntax and evaluation rules, we could encode the conditional expression in terms of the basic lambda terms.</p>
+<p>Thanks to <a href="https://en.wikipedia.org/wiki/Church_encoding">Church-encoding</a> (discovered by Alonzo Church), we can encode boolean data and if-then-else using Lambda Calculus.</p>
+<p>Let's define:</p>
+<ul>
+<li><span class="arithmatex">\(true\)</span> as <span class="arithmatex">\(\lambda x.\lambda y.x\)</span></li>
+<li><span class="arithmatex">\(false\)</span> as <span class="arithmatex">\(\lambda x.\lambda y.y\)</span></li>
+<li><span class="arithmatex">\(ite\)</span> (read as if-then-else) as <span class="arithmatex">\(\lambda e_1. \lambda e_2. \lambda e_3. e_1\ e_2\ e_3\)</span></li>
+</ul>
+<p>We assume the function application is left associative,
+i.e. <span class="arithmatex">\(e_1\ e_2\ e_3 \equiv  (e_1\ e_2)\ e_3\)</span>.
+For example,</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+ite\ true\ w\ z &amp; = \\
+(\lambda e_1. \lambda e_2. \lambda e_3. e_1\ e_2\ e_3)\ true\ w\ z &amp;
+\longrightarrow \\
+true\ w\ z &amp; =  \\
+(\lambda x.\lambda y.x)\ w\ z &amp; \longrightarrow  \\
+w
+\end{array}
+\]</div>
+<h3 id="recursion">Recursion</h3>
+<p>To make our language turing complete, we need to support loops. The way to perform loops in lambda calculus is via recursion.</p>
+<p>Similar to the conditional expression, there are at least two ways of introducing recursion to our language.</p>
+<h4 id="approach-1-extending-the-syntax-and-the-evaluation-rules_1">Approach 1 - Extending the syntax and the evaluation rules</h4>
+<p>We extend the syntax with a mu-abstraction (<span class="arithmatex">\(\mu\)</span>):</p>
+<div class="arithmatex">\[
+\begin{array}{rccl}
+ {\tt (Lambda\ Terms)} &amp; t &amp; ::= &amp; ... \mid \mu f.t
+\end{array}
+\]</div>
+<p>and the evaluation rules:</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+{\tt (\beta\ reduction)} &amp; (\lambda x.t_1)\ t_2 \longrightarrow [t_2/x] t_1 \\
+{\tt (NOR)} &amp; \begin{array}{c}
+                t_1 \longrightarrow t_1' \\
+                \hline
+                t_1\ t_2 \longrightarrow t_1'\ t_2
+                \end{array} \\
+{\tt (unfold)} &amp; \mu f.t \longrightarrow [(\mu f.t)/f] t  \\
+\end{array}
+\]</div>
+<p>Note that we include the  ${\tt (NOR)} $ rule into our evaluation rules to fix the evaluation strategy, and we only reduce the redexes that are <em>not</em> inside a lambda abstraction, otherwise the program does not terminate.</p>
+<p>We include the following cases for the free variable function <span class="arithmatex">\(fv()\)</span> and the substitution
+$$
+\begin{array}{rcl}
+fv(\mu f.t) &amp; = &amp; fv(t) - {f}
+\end{array}
+$$
+and 
+$$
+\begin{array}{rcl}
+ \lbrack t_1 / x \rbrack \mu f.t_2 &amp; = &amp; \mu f.\lbrack t_1 / x \rbrack t_2 &amp; {\tt if}\  f\neq x\  {\tt and}\  f \not \in fv(t_1)
+\end{array}
+$$</p>
+<p>For instance:</p>
+<div class="arithmatex">\[
+\begin{array}{rl}
+(\mu f.\lambda x.if\ x==1\ then\ 1\ else\ x*(f\ (x-1)))\ 3 &amp; \longrightarrow_{\scriptsize {\tt(NOR)+(unfold)}} \\
+(\lbrack (\mu f.\lambda x.if\ x==1\ then\ 1\ else\ x*(f\ (x-1)))/f \rbrack \lambda x.if\ x==1\ then\ 1\ else\ x*(f\ (x-1)))\ 3 &amp; \longrightarrow_{\scriptsize {\tt (substitution) + (\alpha)}} \\
+(\lambda x.if\ x==1\ then\ 1\ else\ x*((\mu f.\lambda y.if\ y==1\ then\ 1\ else\ f\ (y-1))\ (x-1)))\ 3 &amp; \longrightarrow_{\scriptsize {\tt (\beta)}} \\
+\lbrack 3/x \rbrack if\ x==1\ then\ 1\ else\ x*((\mu f.\lambda y.if\ y==1\ then\ 1\ else\ f\ (y-1))\ (x-1)) &amp; \longrightarrow_{\scriptsize {\tt (substitution)}} \\
+if\ 3==1\ then\ 1\ else\ 3*((\mu f.\lambda y.if\ y==1\ then\ 1\ else\ f\ (y-1))\ (3-1)) &amp; \longrightarrow_{\scriptsize {\tt (ifI)+(OpC)}} \\
+if\ false\ then\ 1\ else\ 3*((\mu f.\lambda y.if\ y==1\ then\ 1\ else\ f\ (y-1))\ (3-1)) &amp; \longrightarrow_{\scriptsize {\tt (ifF)}} \\
+3*((\mu f.\lambda y.if\ y==1\ then\ 1\ else\ f\ (y-1))\ (3-1)) &amp; \longrightarrow_{\scriptsize {\tt (OpI2)}} \\
+... \\
+3*(2*1)
+\end{array}
+\]</div>
+<p>Another important point to note is that the set of rewriting rules we have gathered so far <span class="arithmatex">\({\tt (\beta-reduction)}\)</span>, <span class="arithmatex">\({\tt (NOR)}\)</span>, <span class="arithmatex">\({\tt (unfold)}\)</span>, <span class="arithmatex">\({\tt (IfT)}\)</span>, <span class="arithmatex">\({\tt (IfF)}\)</span>, <span class="arithmatex">\({\tt (IfI)}\)</span>, <span class="arithmatex">\({\tt (OpC)}\)</span>, <span class="arithmatex">\({\tt (OpI2)}\)</span> and <span class="arithmatex">\({\tt (OpI1)}\)</span> are syntax-directed, i.e. the LHS of the <span class="arithmatex">\(\longrightarrow\)</span> in the conclusion, which is AKA the head of the rule is unique if we try to rules in this specific order. A clear advantage of this is that we can view this deduction rule system as an algorithm, i.e. an implementation that resembles this specification exists. We will see this in the later part of this course. </p>
+<h4 id="approach-2-church-encoding_1">Approach 2 - Church Encoding</h4>
+<p>Alternatively,
+recursion can be encoded using the fix-pointer combinator (AKA  $Y $-combinator). Let $Y $ be</p>
+<div class="arithmatex">\[
+\lambda f.((\lambda y. (f\ (y\ y)))~(\lambda x.(f\ (x\ x))))
+\]</div>
+<p>We find that for any function <span class="arithmatex">\(g\)</span>, we have
+<span class="arithmatex">\(Y\ g = g\ (Y\ g)\)</span>.</p>
+<p>We will work on the derivation during exercise.</p>
+<p>Let's try to implement the factorial function over natural numbers:</p>
+<div class="arithmatex">\[
+\begin{array}{cc}
+   fac(n) = \left [
+         \begin{array}{ll}
+            1 &amp;  {if}~ n = 0 \\
+            n*fac(n-1) &amp; {otherwise}
+         \end{array} \right .
+\end{array}
+\]</div>
+<p>Our goal is to look for a fixpoint function <span class="arithmatex">\(Fac\)</span> such that
+<span class="arithmatex">\(Y\ Fac \longrightarrow Fac\ (Y\ Fac)\)</span> and <span class="arithmatex">\(Y\ Fac\)</span> implements
+the above definition.</p>
+<p>Let <span class="arithmatex">\(Fac\)</span> be</p>
+<div class="arithmatex">\[
+\begin{array}{c}
+ \lambda fac. \lambda n. ite\ (iszero\ n)\ one\ (mul\ n\ (fac\ (pred\ n)))
+\end{array}
+\]</div>
+<p>where <span class="arithmatex">\(iszero\)</span> tests whether a number is 0 in Church Encoding. <span class="arithmatex">\(mul\)</span> multiplies two
+numbers. <span class="arithmatex">\(pred\)</span> takes a number and return its predecessor in natural
+number order. Then <span class="arithmatex">\(Y\ Fac\)</span> will be the implementation of the factorial function
+described above.</p>
+<h4 id="discussion-1">Discussion 1</h4>
+<p>How to define the following?</p>
+<ul>
+<li><span class="arithmatex">\(one\)</span></li>
+<li><span class="arithmatex">\(iszero\)</span></li>
+<li><span class="arithmatex">\(mul\)</span></li>
+<li><span class="arithmatex">\(pred\)</span></li>
+</ul>
+<h4 id="discussion-2">Discussion 2</h4>
+<p>The current evaluation strategy presented resembles the call-by-need semantics, in which the function arguments are not evaluated until they are needed. What modification will be required if we want to implement a call-by-value semantics (AKA. strict evaluation)?</p>
+<blockquote>
+<p>We will work on the two topics discussed above during the cohort class.</p>
+</blockquote>
+<h2 id="summary">Summary</h2>
+<p>We have covered</p>
+<ul>
+<li>Syntax (lambda terms) and Semantics (<span class="arithmatex">\(\beta\)</span> reduction, substitution, <span class="arithmatex">\(\alpha\)</span> renaming).</li>
+<li>Evaluation strategies, their properties and connection to real world programming</li>
+<li>Extending lambda calculus to support conditional and loop</li>
+<li>Via language extension (we will use)</li>
+<li>Via Church encoding (fun but not very pragmatic in our context)</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../javascripts/mathjax.js"></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

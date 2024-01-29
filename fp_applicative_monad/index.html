@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>50.054 - Applicative and Monad - Compiler Design and Program Analysis 50.054</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Compiler Design and Program Analysis 50.054</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../notes/handout/" class="nav-link">Handout</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#50054-applicative-and-monad" class="nav-link">50.054 - Applicative and Monad</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#learning-outcomes" class="nav-link">Learning Outcomes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#derived-type-class" class="nav-link">Derived Type Class</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#functor-recap" class="nav-link">Functor (Recap)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#applicative-functor" class="nav-link">Applicative Functor</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#monad" class="nav-link">Monad</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#commonly-used-monads" class="nav-link">Commonly used Monads</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#monad-laws" class="nav-link">Monad Laws</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#summary" class="nav-link">Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#extra-materials" class="nav-link">Extra Materials</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="50054-applicative-and-monad">50.054 - Applicative and Monad</h1>
+<h2 id="learning-outcomes">Learning Outcomes</h2>
+<ol>
+<li>Describe and define derived type class</li>
+<li>Describe and define Applicative Functors</li>
+<li>Describe and define Monads</li>
+<li>Apply Monad to in design and develop highly modular and resusable software.</li>
+</ol>
+<h2 id="derived-type-class">Derived Type Class</h2>
+<p>Recall that in our previous lesson, we talk about the <code>Ordering</code> type class.</p>
+<pre><code class="language-scala">trait Ordering[A] {
+    def compare(x:A,y:A):Int // less than: -1, equal: 0, greater than 1
+}
+
+</code></pre>
+<p>Let's consider a variant called <code>Order</code> (actually it is defined in a popular Scala library named <code>cats</code>).</p>
+<pre><code class="language-scala">trait Eq[A] {
+    def eqv(x:A, y:A):Boolean
+}
+
+trait Order[A] extends Eq[A] { 
+    def compare(x:A, y:A):Int
+    def eqv(x:A, y:A):Boolean = compare(x,y) == 0
+    def gt(x:A,  y:A):Boolean = compare(x,y) &gt; 0
+    def lt(x:A,  y:A):Boolean = compare(x,y) &lt; 0
+}
+</code></pre>
+<p>In the above,  the <code>Eq</code> type class is a supertype of the <code>Order</code> type class, because all instances of <code>Order</code> type class should have the method <code>eqv</code> implemented.</p>
+<p>We also say <code>Order</code> is a derived type class of <code>Eq</code>.</p>
+<p>Let's consider some instances</p>
+<pre><code class="language-scala">given eqInt:Eq[Int] = new Eq[Int] {
+    def eqv(x:Int, y:Int):Boolean = x == y
+}
+
+given orderInt:Order[Int] = new Order[Int] {
+    def compare(x:Int, y:Int):Int = x - y
+}
+
+eqInt.eqv(1,1)
+orderInt.eqv(1,1)
+</code></pre>
+<h3 id="an-alternative-approach">An alternative approach</h3>
+<pre><code class="language-scala">trait Order[A] extends Eq[A] { 
+    def compare(x:A, y:A):Int
+    // def eqv(x:A, y:A):Boolean = compare(x,y) == 0
+    def gt(x:A,  y:A):Boolean = compare(x,y) &gt; 0
+    def lt(x:A,  y:A):Boolean = compare(x,y) &lt; 0
+}
+
+given eqInt:Eq[Int] = new Eq[Int] {
+    def eqv(x:Int, y:Int):Boolean = x == y
+}
+
+given orderInt(using eqInt:Eq[Int]):Order[Int] = new Order[Int] {
+    def eqv(x:Int,y:Int):Boolean = eqInt.eqv(x,y)
+    def compare(x:Int, y:Int):Int = x - y
+}
+
+eqInt.eqv(1,1)
+orderInt.eqv(1,1)
+</code></pre>
+<p>In the above definition, we skip the default implementatoin of <code>eqv</code> in <code>Order</code> and make use of the type class instance context to synthesis the <code>eqv</code> method based on the existing type class instances of <code>Eq</code>. (This approach is closer to the one found in Haskell.)</p>
+<h3 id="which-one-is-better">Which one is better?</h3>
+<p>Both have their own pros and cons. In the first approach, we give a default implementation for the <code>eqv</code> overridden method in <code>Order</code> type class, it frees us from re-defining the <code>eqv</code> in every type class instance of <code>Order</code>. In this case, the rule/logic is fixed at the top level. In the second approach, <code>eqv</code> in <code>Order</code> type class is not defined. We are required to define it for every single type class instance of <code>Order</code>, that means more work. The advantage is that we have flexibility to redefine/re-mix definition of <code>eqv</code> coming from other type class instances.</p>
+<h2 id="functor-recap">Functor (Recap)</h2>
+<p>Recall from the last lesson, we make use of the <code>Functor</code> type class to define generic programming style of data processing.</p>
+<pre><code class="language-scala">trait Functor[T[_]] {
+    def map[A,B](t:T[A])(f:A =&gt; B):T[B]
+}
+
+given listFunctor:Functor[List] = new Functor[List] {
+    def map[A,B](t:List[A])(f:A =&gt; B):List[B] = t.map(f)
+}
+
+enum BTree[+A]{
+    case Empty
+    case Node(v:A, lft:BTree[A], rgt:BTree[A])
+}
+
+
+given btreeFunctor:Functor[BTree] = new Functor[BTree] {
+    import BTree.*
+    def map[A,B](t:BTree[A])(f:A =&gt; B):BTree[B] = t match {
+        case Empty =&gt; Empty
+        case Node(v, lft, rgt) =&gt; Node(f(v), map(lft)(f), map(rgt)(f))
+    }
+}
+
+val l = List(1,2,3)
+listFunctor.map(l)((x:Int) =&gt; x + 1)
+
+val t = BTree.Node(2, BTree.Node(1, BTree.Empty, BTree.Empty), BTree.Node(3, BTree.Empty, BTree.Empty))
+btreeFunctor.map(t)((x:Int) =&gt; x + 1)
+</code></pre>
+<p>Note that we also swap the first and the second arguments of the <code>map</code> function.</p>
+<h2 id="applicative-functor">Applicative Functor</h2>
+<p>The <code>Applicative</code> Functor is a derived type class of <code>Functor</code>, which is defined as follows</p>
+<pre><code class="language-scala">trait Applicative[F[_]] extends Functor[F] {
+    def ap[A, B](ff: F[A =&gt; B])(fa: F[A]): F[B]
+    def pure[A](a: A): F[A]
+    def map[A, B](fa: F[A])(f: A =&gt; B): F[B] = ap(pure(f))(fa) 
+}
+</code></pre>
+<p>Note that we "fix" the <code>map</code> for <code>Applicative</code> in the type class level in this case. (i.e. we are following the first approach.)</p>
+<pre><code class="language-scala">given listApplicative:Applicative[List] = new Applicative[List] {
+    def pure[A](a:A):List[A] = List(a) 
+    def ap[A, B](ff: List[A =&gt; B])(fa: List[A]):List[B] = 
+        ff.map( f =&gt; fa.map(f)).flatten
+}
+</code></pre>
+<p>Recall that <code>flatten</code> flattens a list of lists.</p>
+<p>Alternatively, we can define the <code>ap</code> method of the <code>Applicative[List]</code> instance <code>flatMap</code>. Given <code>l</code> is a list,
+<code>l.flatMap(f)</code> is the same as <code>l.map(f).flatten</code>.</p>
+<pre><code class="language-scala">    def ap[A, B](ff: List[A =&gt; B])(fa: List[A]):List[B] = 
+        ff.flatMap( f =&gt; fa.map(f))
+</code></pre>
+<p>Recall that Scala compiler desugars expression of shape</p>
+<pre><code class="language-scala">e1.flatMap( v1 =&gt; e2.flatMap( v2 =&gt; ... en.map(vn =&gt; e ... )))
+</code></pre>
+<p>into</p>
+<pre><code class="language-scala">for {
+    v1 &lt;- e1
+    v2 &lt;- e2
+    ...
+    vn &lt;- en
+} yield (e)
+</code></pre>
+<p>Hence we can rewrite the <code>ap</code> method of the <code>Applicative[List]</code> instance as</p>
+<pre><code class="language-scala">    def ap[A, B](ff: List[A =&gt; B])(fa: List[A]):List[B] = 
+        for {
+            f &lt;- ff
+            a &lt;- fa 
+        } yield (f(a))
+</code></pre>
+<p>It is not suprising the following produces the same results as the functor instance.</p>
+<pre><code class="language-scala">listApplicative.map(l)((x:Int) =&gt; x + 1)
+</code></pre>
+<p>What about <code>pure</code> and <code>ap</code>? when can we use them?</p>
+<p>Let's consider the following contrived example. Suppose we would like to apply two sets of operations to elements from <code>l</code>, each operation will produce its own set of results, and the inputs do not depend on the output of the other set. i.e. If the two set of operations, are <code>(x:Int)=&gt; x+1</code> and <code>(y:Int)=&gt;y*2</code>.</p>
+<pre><code class="language-scala">val intOps= List((x:Int)=&gt;x+1, (y:Int)=&gt;y*2)
+listApplicative.ap(intOps)(l)
+</code></pre>
+<p>we get</p>
+<pre><code class="language-scala">List(2, 3, 4, 2, 4, 6)
+</code></pre>
+<p>as the result.</p>
+<p>Let's consider another example. Recall that <code>Option[A]</code> algebraic datatype which captures a value of type <code>A</code> could be potentially empty.</p>
+<p>We define the <code>Applicative[Option]</code> instance as follows</p>
+<pre><code class="language-scala">given optApplicative:Applicative[Option] = new Applicative[Option] {
+    def pure[A](v:A):Option[A] = Some(v)
+    def ap[A,B](ff:Option[A=&gt;B])(fa:Option[A]):Option[B]  = ff match {
+        case None =&gt; None
+        case Some(f) =&gt; fa match {
+            case None =&gt; None
+            case Some(a) =&gt; Some(f(a))
+        }
+    }
+}
+</code></pre>
+<p>In the above Applicative instance, the <code>ap</code> method takes a optional operation and optional value as inputs, tries to apply the operation to the value when both of them are present, otherwise, signal an error by returning <code>None</code>. This allows us to focus on the high-level function-value-input-output relation and abstract away the details of handling potential absence of function or value.</p>
+<p>Recall the builtin <code>Option</code> type is defined as follows,</p>
+<pre><code class="language-scala">// no need to run this.
+enum Option[+A] {
+    case None
+    case Some(v)
+    def map[B](f:A=&gt;B):Option[B] = this match {
+        case None =&gt; None 
+        case Some(v) =&gt; Some(f(v))
+    }
+    def flatMap[B](f:A=&gt;Option[B]):Option[B] = this match {
+        case None =&gt; None 
+        case Some(v) =&gt; f(v) match {
+            case None =&gt; None 
+            case Some(u) =&gt; Some(u) 
+        }
+    }
+}
+</code></pre>
+<p>Hence <code>optApplicative</code> can be simplified as </p>
+<pre><code class="language-scala">given optApplicative:Applicative[Option] = new Applicative[Option] {
+    def pure[A](v:A):Option[A] = Some(v)
+    def ap[A,B](ff:Option[A=&gt;B])(fa:Option[A]):Option[B] = 
+        ff.flatMap(f =&gt; fa.map(f)) // same as listApplicative
+}
+</code></pre>
+<p>or </p>
+<pre><code class="language-scala">given optApplicative:Applicative[Option] = new Applicative[Option] {
+    def pure[A](v:A):Option[A] = Some(v)
+    def ap[A,B](ff:Option[A=&gt;B])(fa:Option[A]):Option[B] = for 
+    {
+        f &lt;- ff
+        a &lt;- fa
+    } yield f(a) // same as listApplicative
+}
+</code></pre>
+<h3 id="applicative-laws">Applicative Laws</h3>
+<p>Like Functor laws, every Applicative instance must follow the Applicative laws to remain computationally predictable.</p>
+<ol>
+<li>Identity: <code>ap(pure(x=&gt;x))</code> <span class="arithmatex">\(\equiv\)</span> <code>x=&gt;x</code></li>
+<li>Homomorphism: <code>ap(pure(f))(pure(x))</code> <span class="arithmatex">\(\equiv\)</span> <code>pure(f(x))</code></li>
+<li>Interchange: <code>ap(u)(pure(y))</code> <span class="arithmatex">\(\equiv\)</span> <code>ap(pure(f=&gt;f(y)))(u)</code></li>
+<li>
+<p>Composition: <code>ap(ap(ap(pure(f=&gt;f.compose))(u))(v))(w)</code> <span class="arithmatex">\(\equiv\)</span> <code>ap(u)(ap(v)(w))</code></p>
+</li>
+<li>
+<p>Identity law states that applying a lifted identity function of type <code>A=&gt;A</code> is same as an identity function of type <code>F[A] =&gt; F[A]</code> where <code>F</code> is the applicative functor.</p>
+</li>
+<li>Homomorphism says that applying a lifted function (which has type <code>A=&gt;A</code> before being lifted) to a lifted value, is equivalent to applying the unlifted function to the unlifted value directly and then lift the result.</li>
+<li>
+<p>To understand Interchange law let's consider the following equation
+$$
+u\ y \equiv (\lambda f.(f\ y))\ u
+$$</p>
+<ul>
+<li>Interchange law says that the above equation remains valid when <span class="arithmatex">\(u\)</span> is already lifted, as long as we also lift <span class="arithmatex">\(y\)</span>. </li>
+</ul>
+</li>
+<li>
+<p>To understand the Composition law, we consider the following equation in lambda calculus</p>
+</li>
+</ol>
+<div class="arithmatex">\[
+(((\lambda f.(\lambda g.(f \circ g)))\ u)\ v)\ w \equiv u\ (v\ w)
+\]</div>
+<div class="arithmatex">\[
+\begin{array}{rl}
+(\underline{((\lambda f.(\lambda g.(f \circ g)))\ u)}\ v)\ w &amp; \longrightarrow_{\beta} \\ 
+(\underline{(\lambda g.(u \circ g))\ v})\ w &amp; \longrightarrow_{\beta} \\ 
+(u\circ v)\ w &amp; \longrightarrow_{\tt composition} \\ 
+u\ (v\ w)
+\end{array}
+\]</div>
+<p>The Composition Law says that the above equation remains valid when <span class="arithmatex">\(u\)</span>, <span class="arithmatex">\(v\)</span> and <span class="arithmatex">\(w\)</span> are lifted, as long as we also lift <span class="arithmatex">\(\lambda f.(\lambda g.(f \circ g))\)</span>.</p>
+<h4 id="cohort-exercise">Cohort Exercise</h4>
+<p>show that any applicative functor satisfying the above laws also satisfies the Functor Laws</p>
+<h2 id="monad">Monad</h2>
+<p>Monad is one of the essential coding/design pattern for many functional programming languages. It enables us to develop high-level resusable code and decouple code dependencies and generate codes by (semi-) automatic code-synthesis. FYI, Monad is a derived type class of Applicative thus Functor.</p>
+<p>Let's consider a motivating example.  Recall that in the earlier lesson, we came across the following example.</p>
+<pre><code class="language-scala">
+enum MathExp {
+    case Plus(e1:MathExp, e2:MathExp)
+    case Minus(e1:MathExp, e2:MathExp)
+    case Mult(e1:MathExp, e2:MathExp)
+    case Div(e1:MathExp, e2:MathExp)
+    case Const(v:Int)
+}
+
+def eval(e:MathExp):Option[Int] = e match {
+    case MathExp.Plus(e1, e2)  =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(v2) =&gt; Some(v1 + v2)            
+        }
+    }
+    case MathExp.Minus(e1, e2) =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(v2) =&gt; Some(v1 - v2)            
+        }
+    }
+    case MathExp.Mult(e1, e2)  =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(v2) =&gt; Some(v1 * v2)            
+        }
+    }
+    case MathExp.Div(e1, e2)   =&gt; eval(e1) match {
+        case None     =&gt; None
+        case Some(v1) =&gt; eval(e2) match {
+            case None     =&gt; None 
+            case Some(0)  =&gt; None
+            case Some(v2) =&gt; Some(v1 / v2)            
+        }
+    }
+    case MathExp.Const(i)      =&gt; Some(i)
+}
+</code></pre>
+<p>In which we use <code>Option[A]</code> to capture the potential div-by-zero error.
+One issue with the above is that it is very verbose, we lose some readability of the code thus, it takes us a while to migrate to <code>Either[A,B]</code> if we want to have better error messages. Monad is a good application here.</p>
+<p>Let's consider the type class definition of <code>Monad[F[_]]</code>.</p>
+<pre><code class="language-scala">trait Monad[F[_]] extends Applicative[F] {
+    def bind[A,B](fa:F[A])(f:A =&gt; F[B]):F[B]
+    def pure[A](v:A):F[A]
+    def ap[A, B](ff: F[A =&gt; B])(fa: F[A]): F[B] = 
+        bind(ff)((f:A=&gt;B) =&gt; bind(fa)((a:A)=&gt; pure(f(a))))
+}
+
+given optMonad:Monad[Option] = new Monad[Option] {
+    def bind[A,B](fa:Option[A])(f:A=&gt;Option[B]):Option[B] = fa match {
+        case None =&gt; None
+        case Some(a) =&gt; f(a)
+    }
+    def pure[A](v:A):Option[A] = Some(v)
+}
+</code></pre>
+<p>The <code>eval</code> function can be re-expressed using <code>Monad[Option]</code>.</p>
+<pre><code class="language-scala">def eval(e:MathExp)(using m:Monad[Option]):Option[Int] = e match {
+    case MathExp.Plus(e1, e2)  =&gt; 
+        m.bind(eval(e1))( v1 =&gt; {
+            m.bind(eval(e2))( {v2 =&gt; m.pure(v1+v2)})
+        })        
+    case MathExp.Minus(e1, e2) =&gt;         
+        m.bind(eval(e1))( v1 =&gt; {
+            m.bind(eval(e2))( {v2 =&gt; m.pure(v1-v2)})
+        }) 
+    case MathExp.Mult(e1, e2)  =&gt;
+        m.bind(eval(e1))( v1 =&gt; {
+            m.bind(eval(e2))( {v2 =&gt; m.pure(v1*v2)})
+        }) 
+    case MathExp.Div(e1, e2)   =&gt; 
+        m.bind(eval(e1))( v1 =&gt; {
+            m.bind(eval(e2))( {v2 =&gt; if (v2 == 0) {None} else {m.pure(v1/v2)}})
+        }) 
+    case MathExp.Const(i)      =&gt; m.pure(i)
+}
+</code></pre>
+<p>It certainly reduces the level of verbosity, but the readability is worsened.
+Thankfully, we can make use of for comprehension since <code>Option</code> has the member functions <code>flatMap</code> and <code>map</code> defined.</p>
+<p>Recall that Scala desugars <code>for {...} yield</code> expression into <code>flatMap</code> and <code>map</code>.</p>
+<p>Thus the above can be rewritten as</p>
+<pre><code class="language-scala">def eval(e:MathExp)(using m:Monad[Option]):Option[Int] = e match {
+    case MathExp.Plus(e1, e2)  =&gt; for {
+        v1 &lt;- eval(e1)
+        v2 &lt;- eval(e2)
+    } yield (v1+v2) 
+    case MathExp.Minus(e1, e2) =&gt; for {
+        v1 &lt;- eval(e1)
+        v2 &lt;- eval(e2)
+    } yield (v1-v2) 
+    case MathExp.Mult(e1, e2)  =&gt; for {
+        v1 &lt;- eval(e1)
+        v2 &lt;- eval(e2)
+    } yield (v1*v2) 
+    case MathExp.Div(e1, e2)   =&gt; for {
+        v1 &lt;- eval(e1)
+        v2 &lt;- eval(e2)
+        if (v2 !=0)
+    } yield (v1/v2) 
+    case MathExp.Const(i)      =&gt; m.pure(i)
+}
+</code></pre>
+<p>Now the readability is restored.</p>
+<p>Another advantage of coding with <code>Monad</code> is that its abstraction allows us to switch underlying data structure without major code change.</p>
+<p>Suppose we would like to use <code>Either[String, A]</code> or some other equivalent as return type of <code>eval</code> function to support better error message. But before that, let's consider some subclasses of the <code>Applicative</code> and the <code>Monad</code> type classes.</p>
+<pre><code class="language-scala">trait ApplicativeError[F[_], E] extends Applicative[F] {
+    def raiseError[A](e:E):F[A]
+}
+
+trait MonadError[F[_], E] extends Monad[F] with ApplicativeError[F, E] {
+    override def raiseError[A](e:E):F[A]
+}   
+
+type ErrMsg = String
+</code></pre>
+<p>In the above, we define an extension to the <code>Applicative</code> type class, named <code>ApplicativeError</code> which expects an extra type class parameter <code>E</code> that denotes an error. The <code>raiseError</code> method takes a value of type <code>E</code> and returns the Applicative result.</p>
+<p>Similarly, we extend <code>Monad</code> type class with <code>MonadError</code> type class. Next we include the following type class instance to include <code>Option</code> as one f the <code>MonadError</code> functor.</p>
+<pre><code class="language-scala">given optMonadError:MonadError[Option, ErrMsg] = new MonadError[Option, ErrMsg] {
+    def raiseError[A](e:ErrMsg):Option[A] = None
+    def bind[A,B](fa:Option[A])(f:A=&gt;Option[B]):Option[B] = fa match {
+        case None =&gt; None
+        case Some(a) =&gt; f(a)
+    }
+    def pure[A](v:A):Option[A] = Some(v)
+}
+</code></pre>
+<p>Next, we adjust the <code>eval</code> function to takes in a <code>MonadError</code> context instead of a <code>Monad</code> context. In addition, we make the error signal more explicit by calling the <code>raiseError()</code> method from the <code>MonadError</code> type class context.</p>
+<pre><code class="language-scala">def eval2(e:MathExp)(using m:MonadError[Option, ErrMsg]):Option[Int] = e match {
+    case MathExp.Plus(e1, e2)  =&gt; for {
+        v1 &lt;- eval2(e1)
+        v2 &lt;- eval2(e2)
+    } yield (v1+v2) 
+    case MathExp.Minus(e1, e2) =&gt; for {
+        v1 &lt;- eval2(e1)
+        v2 &lt;- eval2(e2)
+    } yield (v1-v2) 
+    case MathExp.Mult(e1, e2)  =&gt; for {
+        v1 &lt;- eval2(e1)
+        v2 &lt;- eval2(e2)
+    } yield (v1*v2) 
+    case MathExp.Div(e1, e2)   =&gt; for {
+        v1 &lt;- eval2(e1)
+        v2 &lt;- eval2(e2)
+        _  &lt;- if (v2 ==0) {m.raiseError(&quot;div by zero encountered.&quot;)} else { m.pure(())}
+    } yield (v1/v2) 
+    case MathExp.Const(i)      =&gt; m.pure(i)
+}
+</code></pre>
+<p>Now let's try to refactor the code to make use of <code>Either[ErrMsg, A]</code> as the functor instead of <code>Option[A]</code>.</p>
+<pre><code class="language-scala">enum Either[+A, +B] {
+    case Left(v: A)
+    case Right(v: B)
+    // to support for comprehension
+    def flatMap[C&gt;:A,D](f: B =&gt; Either[C,D]):Either[C,D] = this match {
+        case Left(a) =&gt; Left(a)
+        case Right(b) =&gt; f(b)
+    }
+    def map[D](f:B =&gt; D):Either[A,D] = this match {
+        case Right(b) =&gt; Right(f(b))
+        case Left(e) =&gt; Left(e)
+    }
+} 
+</code></pre>
+<p>In the above, we have to define <code>flatMap</code> and <code>map</code> member functions for <code>Either</code> type so that we could make
+use of the for comprehension later on. One might argue with the type signature of <code>flatMap</code> should be
+<code>flatMap[D](f: B =&gt; Either[A,D]):Either[A,D]</code>. The issue here is that the type variable <code>A</code> will appear in both co- and contra-variant positions.  The top-level annotation <code>+A</code> is no longer true. Hence we "relax" the type constraint here by introducing a new type variable <code>C</code> which has a lower bound of <code>A</code> (even though we do not need to upcast the result of the Left alternative.)</p>
+<pre><code class="language-scala">type EitherErr = [B] =&gt;&gt; Either[ErrMsg,B]
+</code></pre>
+<p>In the above we define <code>Either</code> algebraic datatype and the type construcor <code>EitherErr</code>. <code>[B] =&gt;&gt; Either[ErrMsg, B]</code> denotes a type lambda, which means that <code>EitherErr</code> is a type constructor (or type function) that takes a type <code>B</code> and return an <code>Either[ErrMsg, B]</code> type.</p>
+<p>Next, we define the type class instance for <code>MonadError[EitherErr, ErrMsg]</code></p>
+<pre><code class="language-scala">given eitherErrMonad: MonadError[EitherErr, ErrMsg] =
+    new MonadError[EitherErr, ErrMsg] {
+        import Either.*
+        def raiseError[B](e: ErrMsg): EitherErr[B] = Left(e)
+        def bind[A, B](
+            fa: EitherErr[A]
+        )(f: A =&gt; EitherErr[B]): EitherErr[B] = fa match {
+            case Right(b) =&gt; f(b)
+            case Left(s)  =&gt; Left(s)
+        }
+        def pure[B](v: B): EitherErr[B] = Right(v)
+    }
+</code></pre>
+<p>And finally, we refactor the <code>eval</code> function by changing its type signature. And its body remains unchanged.</p>
+<pre><code class="language-scala">def eval3(e:MathExp)(using m:MonadError[EitherErr, ErrMsg]):EitherErr[Int] = e match {
+    case MathExp.Plus(e1, e2)  =&gt; for {
+        v1 &lt;- eval3(e1)
+        v2 &lt;- eval3(e2)
+    } yield (v1+v2) 
+    case MathExp.Minus(e1, e2) =&gt; for {
+        v1 &lt;- eval3(e1)
+        v2 &lt;- eval3(e2)
+    } yield (v1-v2) 
+    case MathExp.Mult(e1, e2)  =&gt; for {
+        v1 &lt;- eval3(e1)
+        v2 &lt;- eval3(e2)
+    } yield (v1*v2) 
+    case MathExp.Div(e1, e2)   =&gt; for {
+        v1 &lt;- eval3(e1)
+        v2 &lt;- eval3(e2)
+        _  &lt;- if (v2 ==0) {m.raiseError(&quot;div by zero encountered.&quot;)} else { m.pure(())}
+    } yield (v1/v2) 
+    case MathExp.Const(i)      =&gt; m.pure(i)
+}
+</code></pre>
+<h2 id="commonly-used-monads">Commonly used Monads</h2>
+<p>We have seen the option Monad and the either Monad. Let's consider a few commonly used Monads.</p>
+<h3 id="list-monad">List Monad</h3>
+<p>We know that <code>List</code> is a Functor and an Applicative.
+It is not surprising that <code>List</code> is also a Monad.</p>
+<pre><code class="language-scala">given listMonad:Monad[List] = new Monad[List] {
+    def pure[A](v:A):List[A] = List(v)
+    def bind[A,B](fa:List[A])(f:A =&gt; List[B]):List[B] = 
+        fa.flatMap(f)
+}
+</code></pre>
+<p>With the above instance, we can write list processing method in for comprehension which is similar to query languages.</p>
+<pre><code class="language-scala">import java.util.Date
+import java.util.Calendar
+import java.util.GregorianCalendar
+import java.text.SimpleDateFormat
+case class Staff(id:Int, dob:Date)
+
+def mkStaff(id:Int, dobStr:String):Staff = {
+    val sdf = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;)
+    val dobDate = sdf.parse(dobStr)
+    Staff(id, dobDate)
+}
+val staffData = List(
+    mkStaff(1, &quot;1076-01-02&quot;),
+    mkStaff(2, &quot;1986-07-24&quot;)
+)
+
+def ageBelow(staff:Staff, age:Int): Boolean = staff match {
+    case Staff(id, dob) =&gt; {
+        val today = new Date()
+        val calendar = new GregorianCalendar();
+        calendar.setTime(today)
+        calendar.add(Calendar.YEAR, -age)
+        val ageYearsAgo = calendar.getTime()
+        dob.after(ageYearsAgo)
+    }
+}
+
+def query(data:List[Staff]):List[Staff] = for {
+    staff &lt;- data          // from data 
+    if ageBelow(staff, 40) // where staff.age &lt; 40
+} yield staff              // select *
+</code></pre>
+<h3 id="reader-monad">Reader Monad</h3>
+<p>Next we consider the <code>Reader</code> Monad.  <code>Reader</code> Monad denotes a shared input environment used by multiple computations. Once shared, this environment stays immutable.</p>
+<p>For example, suppose we would like to implement some test with a sequence of API calls. Most of these API calls are having the same host IP. We can set the host IP as part of the reader's environment.</p>
+<pre><code class="language-scala">case class Reader[R, A] (run: R=&gt;A) { 
+    // we need flatMap and map for for-comprehension
+    def flatMap[B](f:A =&gt;Reader[R,B]):Reader[R,B] = this match {
+        case Reader(ra) =&gt; Reader (
+            r =&gt; f(ra(r)) match {
+                case Reader(rb) =&gt; rb(r)
+            }
+        )
+    }
+    def map[B](f:A=&gt;B):Reader[R, B] = this match {
+        case Reader(ra) =&gt; Reader (
+            r =&gt; f(ra(r))
+        )
+    }
+}
+
+type ReaderM = [R] =&gt;&gt; [A] =&gt;&gt; Reader[R, A]
+
+trait ReaderMonad[R] extends Monad[ReaderM[R]] {
+    override def pure[A](v:A):Reader[R, A] = Reader (r =&gt; v)
+    override def bind[A,B](fa:Reader[R, A])(f:A=&gt;Reader[R,B]):Reader[R,B] = fa match {
+        case Reader(ra) =&gt; Reader (
+            r=&gt; f(ra(r)) match {
+                case Reader(rb) =&gt; rb(r)
+            }
+        ) 
+    }
+    def ask:Reader[R,R] = Reader( r =&gt; r)
+    def local[A](f:R=&gt;R)(r:Reader[R,A]):Reader[R,A] = r match {
+        case Reader(ra) =&gt; Reader( r =&gt; {
+            val localR = f(r)
+            ra(localR)
+        })
+    }    
+}
+</code></pre>
+<p>In the above <code>Reader[R,A]</code> case class defines the structure of the Reader type, where <code>R</code> denotes the shared information for the computation, (source for reader), <code>A</code> denotes the output of the computation. We would like to define <code>Reader[R,_]</code> as a Monad instance. To do so, we define a type-curry version of <code>Reader</code>, i.e. <code>ReaderM</code>.</p>
+<p>One crucial observation is that <code>bind</code> method in <code>ReaderMonad</code> is nearly identical to <code>flatMap</code> in <code>Reader</code>, with the arguments swapped.</p>
+<p>In fact, we can re-express <code>bind</code> for all Monads as the <code>flatMap</code> in their underlying case class.</p>
+<pre><code class="language-scala">override def bind[A,B](fa:Reader[R, A])(f:A=&gt;Reader[R,B]):Reader[R,B] = fa.flatMap(f)
+</code></pre>
+<p>The following example shows how Reader Monad can be used in making several API calls (computation) to the same API server (shared input
+<code>https://127.0.0.1/</code>). For authentication we need to call the authentication server <code>https://127.0.0.10/</code> temporarily. </p>
+<pre><code class="language-scala">case class API(url:String)
+
+given APIReader:ReaderMonad[API] = new ReaderMonad[API] {}
+
+def get(path:String)(using pr:ReaderMonad[API]):Reader[API,Unit] = for {
+    r &lt;- pr.ask
+    s &lt;- r match {
+        case API(url) =&gt; pr.pure(println(s&quot;${url}${path}&quot;))
+    }
+} yield s
+
+def authServer(api:API):API = API(&quot;https://127.0.0.10/&quot;)
+
+def test1(using pr:ReaderMonad[API]):Reader[API, Unit] = for {
+    a &lt;- pr.local(authServer)(get(&quot;auth&quot;))
+    t &lt;- get(&quot;time&quot;)
+    j &lt;- get(&quot;job&quot;)
+} yield (())
+
+
+def runtest1():Unit = test1 match {
+    case Reader(run) =&gt; run(API(&quot;https://127.0.0.1/&quot;))
+}
+</code></pre>
+<h3 id="state-monad">State Monad</h3>
+<p>We consider the <code>State</code> Monad. A <code>State</code> Monad allows programmers capture and manipulate stateful computation without using assignment and mutable variable. One advantage of doing so is that program has full control of the state without having direct access to the computer memory. In a typeful language like Scala, the type system segregates the pure computation from the stateful computation. This greatly simplify software verification and debugging.</p>
+<p>The following we define a <code>State</code> case class, which has a member computation <code>run:S =&gt; (S,A)</code>.</p>
+<pre><code class="language-scala">case class State[S,A]( run:S=&gt;(S,A)) { 
+    def flatMap[B](f: A =&gt; State[S,B]):State[S,B] = this match {
+        case State(ssa) =&gt; State(
+            s=&gt; ssa(s) match {
+                case (s1,a) =&gt; f(a) match {
+                    case State(ssb) =&gt; ssb(s1)
+                }
+            }
+        )
+    }
+    def map[B](f:A =&gt; B):State[S,B] = this match {
+        case State(ssa) =&gt; State(
+            s=&gt; ssa(s) match {
+                case (s1, a) =&gt; (s1, f(a))
+            }
+        )
+    }
+}
+</code></pre>
+<p>As suggested by the type, the computationn <code>S=&gt;(S,A)</code>, takes in a state <code>S</code> as input and return a tuple of output, consists a new state and the result of the computation.</p>
+<p>The State Monad type class is defined as a dervied type class of <code>Monad[StateM[S]]</code>.</p>
+<pre><code class="language-scala">type StateM = [S] =&gt;&gt; [A] =&gt;&gt; State[S,A]
+
+trait StateMonad[S] extends Monad[StateM[S]] {
+    override def pure[A](v:A):State[S,A] = State( s=&gt; (s,v))
+    override def bind[A,B](
+        fa:State[S,A]
+        )(
+            ff:A =&gt; State[S,B]
+        ):State[S,B] = fa.flatMap(ff)
+    def get:State[S, S] = State(s =&gt; (s,s))
+    def set(v:S):State[S,Unit] = State(s =&gt; (v,()))
+}
+</code></pre>
+<p>In the <code>pure</code> method's default implementation, we takes a value <code>v</code> of type <code>A</code> and return
+a <code>State</code> case class oject by wrapping a lambda which takes a state <code>s</code> and returns back the same state <code>s</code> with the input value <code>v</code>. In the default implementation of the <code>bind</code> method, we take a computation <code>fa</code> of type <code>State[S,A]</code>, i.e. a stateful computation over state type <code>S</code> and return a result of type <code>A</code>. In addition, we take a function that expects input of type <code>A</code> and returns a stateful computation <code>State[S,B]</code>. We apply <code>flatMap</code> of <code>fa</code> to <code>ff</code>., which can be expanded to</p>
+<pre><code class="language-scala">fa.flatMap(ff) --&gt;
+fa match {
+    case State(ssa) =&gt; State ( s =&gt; {
+        ssa(s) match {
+            case (s1,a) =&gt; ff(a) match {
+                case State(ssb) =&gt; ssb(s1) 
+            }
+        }
+    })
+}
+
+</code></pre>
+<p>In essence it "opens" the computation in <code>fa</code> to extract the run function <code>ssa</code> which takes a state returns result <code>A</code> with the output state. As the output, we construct stateful computation in which a state <code>s</code> is taken as input, we immediately apply <code>s</code> with <code>ssa</code> (i.e. the computation extracted from <code>fa</code>) to compute the intermediate state <code>s1</code> and the output <code>a</code> (of type <code>A</code>).  Next we apply <code>ff</code> to <code>a</code> which returns a Stateful computation <code>State[S,B]</code>. We extract the run function from this stateful copmutation, namley <code>ssb</code> and apply it to <code>s1</code> to continue with the result of the computation. In otherwords, <code>bind</code> function chains up a stateful computation  <code>fa</code> with a lambda expressoin that consumes the result from <code>fa</code> and continue with another stateful copmutation.</p>
+<p>The <code>get</code> and the <code>set</code> methods give us access to the state environment of type <code>S</code>.</p>
+<p>For instance,</p>
+<pre><code class="language-scala">case class Counter(c:Int)
+
+given counterStateMonad:StateMonad[Counter] = new StateMonad[Counter]  {
+}
+
+def incr(using csm:StateMonad[Counter]):State[Counter,Unit] = for {
+    Counter(c) &lt;- csm.get
+    _ &lt;- csm.set(Counter(c+1))
+} yield ()
+
+def app(using csm:StateMonad[Counter]):State[Counter, Int] = for {
+    _ &lt;- incr
+    _ &lt;- incr
+    Counter(v) &lt;- csm.get
+} yield v
+</code></pre>
+<p>In the above we define the state environment as an integer counter. Monadic function <code>incr</code> increase the counter in the state.</p>
+<h2 id="monad-laws">Monad Laws</h2>
+<p>Similar to Functor and Applicative, all instances of Monad must satisfy the following
+three Monad Laws.</p>
+<ol>
+<li>Left Identity: <code>bind(pure(a))(f)</code> <span class="arithmatex">\(\equiv\)</span> <code>f(a)</code></li>
+<li>Right Identity: <code>bind(m)(pure)</code> <span class="arithmatex">\(\equiv\)</span> <code>m</code></li>
+<li>
+<p>Associativity: <code>bind(bind(m)(f))(g)</code> <span class="arithmatex">\(\equiv\)</span> <code>bind(m)(x =&gt; bind(f(x))(g))</code></p>
+</li>
+<li>
+<p>Intutively speaking, a <code>bind</code> operation is to <em>extract</em> results of type <code>A</code> from its first argument with type <code>F[A]</code> and apply <code>f</code> to the extracted results.</p>
+</li>
+<li>Left identity law enforces that binding a lifted value to <code>f</code>, is the same as applying <code>f</code> to the unlifted value directly, because the lifting and the <em>extraction</em> of the bind cancel each other.</li>
+<li>Right identity law enforces that binding a lifted value to <code>pure</code>,  is the same as the lifted value, because <em>extracting</em> results from <code>m</code> and <code>pure</code> cancel each other.</li>
+<li>The Associativity law enforces that binding a lifted value <code>m</code> to <code>f</code> then to <code>g</code> is the same as binding <code>m</code> to a monadic bind composition <code>(x =&gt; bind(f(x)(g)))</code></li>
+</ol>
+<h2 id="summary">Summary</h2>
+<p>In this lesson we have discussed the following</p>
+<ol>
+<li>A derived type class is a type class that extends from another one.</li>
+<li>An Applicative Functor is a sub-class of Functor, with the methods <code>pure</code> and <code>ap</code>.</li>
+<li>The four laws for Applicative Functor.</li>
+<li>A Monad Functor is a sub-class of Applicative Functor, with the method <code>bind</code>.</li>
+<li>The three laws of Monad Functor.</li>
+<li>A few commonly used Monad such as, List Monad, Option Monad, Reader Monad and State Monad.</li>
+</ol>
+<h2 id="extra-materials">Extra Materials</h2>
+<h3 id="writer-monad">Writer Monad</h3>
+<p>The dual of the <code>Reader</code> Monad is the <code>Writer</code> Monad, which has the following definition.</p>
+<pre><code class="language-scala">// inspired by https://kseo.github.io/posts/2017-01-21-writer-monad.html
+trait Monoid[A]{ // We omitted the super class SemiRing[A]
+    def mempty:A
+    def mappend:A =&gt; A =&gt; A
+}
+
+given listMonoid[A]:Monoid[List[A]] = new Monoid[List[A]] {
+    def mempty:List[A] = Nil
+    def mappend:List[A]=&gt;List[A]=&gt;List[A] = 
+        (l1:List[A])=&gt;(l2:List[A]) =&gt; l1 ++ l2 
+}
+
+case class Writer[W,A]( run: (W,A))(using mw:Monoid[W]) {
+    def flatMap[B](f:A =&gt; Writer[W,B]):Writer[W,B] = this match {
+        case Writer((w,a)) =&gt; f(a) match {
+            case Writer((w2,b)) =&gt; Writer((mw.mappend(w)(w2), b))
+        } 
+    }
+    def map[B](f:A=&gt;B):Writer[W, B] = this match {
+        case Writer((w,a)) =&gt; Writer((w, f(a)))
+    }
+}
+</code></pre>
+<p>Similar to the <code>Reader</code> Monad, in the above we define a case class <code>Writer</code>, which has a member value <code>run</code> that returns a tuple of <code>(W,A)</code>.  The subtle difference is that the writer memory <code>W</code> has to be an instance of the <code>Monoid</code> type class, in which <code>mempty</code> and <code>mappend</code> operations are defined.</p>
+<pre><code class="language-scala">type WriterM = [W] =&gt;&gt; [A] =&gt;&gt; Writer[W,A] 
+
+trait WriterMonad[W] extends Monad[WriterM[W]] {
+    implicit def W0:Monoid[W]
+    override def pure[A](v: A): Writer[W, A] = Writer((W0.mempty, v))
+    override def bind[A, B](
+        fa: Writer[W, A]
+    )(f: A =&gt; Writer[W, B]): Writer[W, B] = fa match {
+        case Writer((w, a)) =&gt;
+            f(a) match {
+                case Writer((w2, b)) =&gt; {
+                    Writer((W0.mappend(w)(w2), b))
+                }
+            }
+    }
+    def tell(w: W): Writer[W, Unit] = Writer((w, ()))
+    def pass[A](ma: Writer[W, (A, W =&gt; W)]): Writer[W, A] = ma match {
+        case Writer((w, (a, f))) =&gt; Writer((f(w), a))
+    }
+}
+</code></pre>
+<p>In the above we define <code>WriterMonad</code> to be a derived type class of <code>Monad[WriterM[W]]</code>. For a similar reason,
+we need to include the type class <code>Monoid[W]</code> to ensure that <code>mempty</code> and <code>mappend</code> are defined on <code>W</code>. Besides the <code>pure</code> and <code>bind</code> members, we introduce <code>tell</code> and <code>pass</code>. <code>tell</code> writes the given argument into the writer's memory. <code>pass</code> execute a given computation which returns a value of type <code>A</code> and a memory update function <code>W=&gt;W</code>, and return a <code>Writer</code> whose memory is updated by applied the update function to the memory.</p>
+<p>In the following we define a simple application with logging mechanism using the <code>Writer</code> Monad.</p>
+<pre><code class="language-scala">case class LogEntry(msg:String)
+
+given logWriterMonad:WriterMonad[List[LogEntry]] = new WriterMonad[List[LogEntry]] {
+    override def W0:Monoid[List[LogEntry]] = new Monoid[List[LogEntry]] {
+        override def mempty = Nil
+        override def mappend = (x:List[LogEntry]) =&gt; (y:List[LogEntry]) =&gt; x ++ y
+    }
+}
+
+def logger(m: String)(using
+    wm: WriterMonad[List[LogEntry]]
+): Writer[List[LogEntry], Unit] = wm.tell(List(LogEntry(m)))
+
+def app(using
+    wm: WriterMonad[List[LogEntry]]
+): Writer[List[LogEntry], Int] = for {
+    _ &lt;- logger(&quot;start&quot;)
+    x &lt;- wm.pure(1 + 1)
+    _ &lt;- logger(s&quot;result is ${x}&quot;)
+    _ &lt;- logger(&quot;done&quot;)
+} yield x
+
+def runApp(): Int = app match {
+    case Writer((w, i)) =&gt; {
+        println(w)
+        i
+    }
+}
+</code></pre>
+<h3 id="monad-transformer">Monad Transformer</h3>
+<p>Is the following class a Monad?</p>
+<pre><code class="language-scala">case class MyState[S,A]( run:S=&gt;Option[(S,A)]) 
+</code></pre>
+<p>The difference between this class and the <code>State</code> class we've seen earlier is that the execution method <code>run</code> yields result of type <code>Option[(S,A)]</code> instead of <code>(S,A)</code> which means that it can potentially fail.</p>
+<p>It is ascertained that <code>MyState</code> is also a Monad, and it is a kind of special State Monad.</p>
+<pre><code class="language-scala">case class MyState[S, A](run: S =&gt; Option[(S, A)]) {
+    def flatMap[B](f: A =&gt; MyState[S, B]): MyState[S, B] = this match {
+        case MyState(ssa) =&gt;
+            MyState(s =&gt;
+                ssa(s) match {
+                    case None =&gt; None
+                    case Some((s1, a)) =&gt;
+                        f(a) match {
+                            case MyState(ssb) =&gt; ssb(s1)
+                        }
+                }
+            )
+    }
+    def map[B](f: A =&gt; B): MyState[S, B] = this match {
+        case MyState(ssa) =&gt;
+            MyState(s =&gt;
+                ssa(s) match {
+                    case None          =&gt; None
+                    case Some((s1, a)) =&gt; Some((s1, f(a)))
+                }
+            )
+    }
+}
+
+type MyStateM = [S] =&gt;&gt; [A] =&gt;&gt; MyState[S,A]
+
+trait MyStateMonad[S] extends Monad[MyStateM[S]] {
+    override def pure[A](v:A):MyState[S,A] = MyState( s=&gt; Some((s,v)))
+    override def bind[A,B](
+        fa:MyState[S,A]
+        )(
+            ff:A =&gt; MyState[S,B]
+        ):MyState[S,B] = fa.flatMap(ff)
+    def get:MyState[S, S] = MyState(s =&gt; Some((s,s)))
+    def set(v:S):MyState[S,Unit] = MyState(s =&gt; Some((v,())))
+}
+</code></pre>
+<p>Besides "stuffing-in" an <code>Option</code> type, one could use an <code>Either</code> type and etc. Is there a way to generalize this by parameterizing?
+Seeking the answer to this question leads us to <em>Monad Transformer</em>.</p>
+<p>We begin by parameterizing the <code>Option</code> functor in <code>MyState</code></p>
+<pre><code class="language-scala">case class StateT[S, M[_], A](run: S =&gt; M[(S, A)])(using m:Monad[M]) {
+    def flatMap[B](f: A =&gt; StateT[S, M, B]): StateT[S, M, B] = this match {
+        case StateT(ssa) =&gt;
+            StateT(s =&gt; m.bind(ssa(s))
+                (sa =&gt; sa match {
+                    case (s1,a) =&gt; f(a) match {
+                        case StateT(ssb) =&gt; ssb(s1)
+                        }
+                    }
+                )
+            ) 
+        }
+
+    def map[B](f: A =&gt; B): StateT[S, M, B] = this match {
+        case StateT(ssa) =&gt;
+            StateT(s =&gt; m.bind(ssa(s))
+                (sa =&gt; sa match {
+                    case (s1, a) =&gt; m.pure((s1, f(a)))
+                })
+            )
+    }
+}
+</code></pre>
+<p>In the above it is largely similar to <code>MyState</code> class, except that we parameterize <code>Option</code> by a type parameter <code>M</code>. <code>M[_]</code> indicates that it is of kind <code>*=&gt;*</code>. <code>(using m:Monad[M])</code> further contraints <code>M</code> must be an instance of Monad, so that we could make use of the <code>bind</code> and <code>pure</code> from <code>M</code>'s Monad instance.</p>
+<p>Naturally, we can define a derived type class called <code>StateTMonad</code>.</p>
+<pre><code class="language-scala">type StateTM = [S] =&gt;&gt; [M[_]] =&gt;&gt; [A] =&gt;&gt; StateT[S, M, A]
+
+trait StateTMonad[S,M[_]] extends Monad[StateTM[S][M]]  {
+    implicit def M0:Monad[M]
+    override def pure[A](v: A): StateT[S, M, A] = StateT(s =&gt; M0.pure((s, v)))
+    override def bind[A, B](
+        fa: StateT[S, M, A]
+    )(
+        ff: A =&gt; StateT[S, M, B]
+    ): StateT[S, M, B] = fa.flatMap(ff)
+    def get: StateT[S, M, S] = StateT(s =&gt; M0.pure((s, s)))
+    def set(v: S): StateT[S, M, Unit] = StateT(s =&gt; M0.pure(v, ()))
+}
+</code></pre>
+<p>Given that <code>Option</code> is a Monad, we can redefine <code>MyStateMonad</code>  in terms of <code>StateTMonad</code> and <code>optMonad</code>.</p>
+<pre><code class="language-scala">trait StateOptMonad[S] extends StateTMonad[S, Option] { 
+    override def M0 = optMonad
+}
+</code></pre>
+<p>What about the original <em>vanilla</em> <code>State</code> Monad? We could introduce an Identity Monad.</p>
+<pre><code class="language-scala">case class Identity[A](run:A) {
+    def flatMap[B](f:A=&gt;Identity[B]):Identity[B] = this match {
+        case Identity(a) =&gt; f(a)
+    }
+    def map[B](f:A=&gt;B):Identity[B] = this match {
+        case Identity(a) =&gt; Identity(f(a))
+    }
+}
+
+given identityMonad:Monad[Identity] = new Monad[Identity] {
+    override def pure[A](v:A):Identity[A] = Identity(v)
+    override def bind[A,B](fa:Identity[A])(f: A =&gt; Identity[B]):Identity[B] = fa.flatMap(f)
+}
+</code></pre>
+<p>Then we can re-define the vanilla <code>State</code> Monad as follows, (in fact like many existing Monad libraries out there.)</p>
+<pre><code class="language-scala">trait StateIdentMonad[S] extends StateTMonad[S, Identity] { // same as StateMonad
+    override def M0 = identityMonad
+}
+</code></pre>
+<p>One advantage of having Monad Transformer is that now we can create new Monad by composition of existing Monad Transformers. We are able to segregate and interweave methods from different Monad serving different purposes.</p>
+<p>Similarly we could generalize the <code>Reader</code> Monad  to its transformer variant.</p>
+<pre><code class="language-scala">case class ReaderT[R, M[_], A](run: R =&gt; M[A])(using m:Monad[M]) {
+    def flatMap[B](f: A =&gt; ReaderT[R, M, B]):ReaderT[R, M, B] = this match {
+        case ReaderT(ra) =&gt; ReaderT( r =&gt; m.bind(ra(r))
+            ( a =&gt; f(a) match {
+            case ReaderT(rb) =&gt; rb(r)
+            }))
+    }
+    def map[B](f: A =&gt; B):ReaderT[R, M, B] = this match {
+        case ReaderT(ra) =&gt; ReaderT( r =&gt; m.bind(ra(r))
+            ( a =&gt; m.pure(f(a))))
+    }
+}
+
+
+type ReaderTM = [R] =&gt;&gt;[M[_]] =&gt;&gt; [A] =&gt;&gt; ReaderT[R, M, A]
+
+trait ReaderTMonad[R,M[_]] extends Monad[ReaderTM[R][M]] {
+    implicit def M0:Monad[M]
+    override def pure[A](v: A): ReaderT[R, M, A] = ReaderT(r =&gt; M0.pure(v))
+    override def bind[A, B](
+        fa: ReaderT[R, M, A]
+    )(f: A =&gt; ReaderT[R, M, B]): ReaderT[R, M, B] = fa.flatMap(f)
+    def ask: ReaderT[R, M, R] = ReaderT(r =&gt; M0.pure(r))
+    def local[A](f: R =&gt; R)(r: ReaderT[R, M, A]): ReaderT[R, M, A] = r match {
+        case ReaderT(ra) =&gt;
+            ReaderT(r =&gt; {
+                val localR = f(r)
+                ra(localR)
+            })
+    }
+}
+
+trait ReaderIdentMonad[R] extends ReaderTMonad[R, Identity] { // same as ReaderMonad
+    override def M0 = identityMonad
+}
+</code></pre>
+<p>Note that the order of how Monad Transfomers being stacked up makes a difference,</p>
+<p>For instance, can you explain what is the difference between the following two?</p>
+<pre><code class="language-scala">trait ReaderStateIdentMonad[R, S] extends ReaderTMonad[R, StateTM[S][Identity]] {
+    override def M0:StateIdentMonad[S] = new StateIdentMonad[S]{}
+}
+
+trait StateReaderIdentMonad[S, R] extends StateTMonad[S, ReaderTM[R][Identity]] {
+    override def M0:ReaderIdentMonad[R] = new ReaderIdentMonad[R]{}
+}
+
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../javascripts/mathjax.js"></script>
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
