@@ -118,7 +118,7 @@ We model the memory environment of a SIMP program as pair of variable and values
 <p>We define the operational semantics of SIMP with two sets of rules.</p>
 <p>The first set of rules deal with expression.</p>
 <h4 id="small-step-operational-semantics-of-simp-expression">Small Step Operational Semantics of SIMP Expression</h4>
-<p>The set of small stpe operational semantics for expressions is defined in a relation <span class="arithmatex">\(\Delta \vdash E \longrightarrow E'\)</span>.</p>
+<p>The set of small step operational semantics for expressions is defined in a relation <span class="arithmatex">\(\Delta \vdash E \longrightarrow E'\)</span>.</p>
 <div class="arithmatex">\[
 {\tt (sVar)} ~~~ \Delta \vdash X \longrightarrow \Delta(X)
 $$
@@ -385,8 +385,8 @@ return s;
             c + 1 ---&gt; # (sOp1)
             0 + 1 ---&gt; # (SOp3)
             1
-        {(input,1), (x,1), (s,0), (c,0)},
-        c = 0 ---&gt; # (sAssign2)
+        {(input,1), (x,1), (s,0), (c,1)},
+        c = 1 ---&gt; # (sAssign2)
         {(input,1), (x,1), (s,0), (c,1)},
         nop
     ---&gt; # (sNopSeq) 
@@ -442,7 +442,7 @@ This leads us to the big step operatinal semantics.
 Big step operatinal semantics in some literature is also called the structural operational semantics as it leverages on the syntactic structure of the program.</p>
 <h4 id="big-step-operational-semantics-for-simp-expressions">Big Step Operational Semantics for SIMP expressions</h4>
 <p>We define the big step oeprational semantics for SIMP expressions via a relation
-<span class="arithmatex">\(\Delta \vdash E \Downarrow C\)</span>, which reads under the memory environment <span class="arithmatex">\(\Delta\)</span> the expressiopn <span class="arithmatex">\(E\)</span> is evaluated constant <span class="arithmatex">\(C\)</span>.</p>
+<span class="arithmatex">\(\Delta \vdash E \Downarrow C\)</span>, which reads under the memory environment <span class="arithmatex">\(\Delta\)</span> the expression <span class="arithmatex">\(E\)</span> is evaluated constant <span class="arithmatex">\(C\)</span>.</p>
 <p>We consider the following three rules
 $$
 {\tt (bConst)} ~~~~ \Delta \vdash C \Downarrow C
@@ -472,7 +472,7 @@ In case that the expression is a constant, we return the constant itself.</p>
                \end{array}
 \end{array}
 \]</div>
-<p>the last rule <span class="arithmatex">\({\tt (bParen)}\)</span> evaluetes an expression enclosed by parantheses.  </p>
+<p>the last rule <span class="arithmatex">\({\tt (bParen)}\)</span> evaluates an expression enclosed by parantheses.  </p>
 <h4 id="big-step-operational-semantics-for-simp-statements">Big Step Operational Semantics for SIMP statements</h4>
 <p>We define the big step operational semantics for SIMP statement using a relation <span class="arithmatex">\((\Delta, S) \Downarrow \Delta'\)</span>, which says the program configuration <span class="arithmatex">\((\Delta, S)\)</span> is evaluated to result memory environment <span class="arithmatex">\(\Delta'\)</span> assuming <span class="arithmatex">\(S\)</span> is terminating under <span class="arithmatex">\(\Delta\)</span>. Note that big step operational semantics for SIMP statement can only defines the behavior of terminating program configurations.</p>
 <p>We consider the following rules
@@ -530,7 +530,7 @@ $$</p>
 <div class="arithmatex">\[
 {\tt (bNop)} ~~~~ (\Delta, nop) \Downarrow \Delta
 \]</div>
-<p>In case that the statement is a noop statement, there is no change to the memory environment.</p>
+<p>In case that the statement is a <code>nop</code> statement, there is no change to the memory environment.</p>
 <div class="arithmatex">\[
 \begin{array}{rc}
 {\tt (bSeq)} &amp; \begin{array}{c}
@@ -737,7 +737,7 @@ In the <span class="arithmatex">\({\tt (pRegister)}\)</span> and the <span class
 {\tt (pIfn0)} &amp; \begin{array}{c}
      L(s) = 0
      \\ \hline
-     P \vdash (L, l: ifn\ s\ goto\ l') \longrightarrow (L, P(l+1))
+     P \vdash (L, l: ifn\ s\ goto\ l') \longrightarrow (L, P(l'))
      \end{array}
 \end{array}
 \]</div>
@@ -746,7 +746,7 @@ In the <span class="arithmatex">\({\tt (pRegister)}\)</span> and the <span class
 {\tt (pIfnNot0)} &amp; \begin{array}{c}
      L(s) \neq  0
      \\ \hline
-     P \vdash (L, l: ifn\ s\ goto\ l') \longrightarrow (L, P(l'))
+     P \vdash (L, l: ifn\ s\ goto\ l') \longrightarrow (L, P(l+1))
      \end{array}
 \end{array}
 \]</div>
@@ -756,7 +756,7 @@ In the <span class="arithmatex">\({\tt (pRegister)}\)</span> and the <span class
 \]</div>
 <p>The rule <span class="arithmatex">\({\tt (pGoto)}\)</span> jumps to to the target label instruction.</p>
 <p>Note that there is no rule for <span class="arithmatex">\(ret\)</span> as the program execution will stop there.
-Further more, the set of rules does not mention the scenario in which the look up of a register (or a temp variable) in the environment fails. In these casse, the program exit with an error.</p>
+Further more, the set of rules does not mention the scenario in which the look up of a register (or a temp variable) in the environment fails. In these cases, the program exit with an error.</p>
 <p>For example, let <span class="arithmatex">\(P\)</span> be</p>
 <pre><code class="language-js">1: x &lt;- input
 2: s &lt;- 0
@@ -780,7 +780,7 @@ P |- {(input,1), (x,1), (s,0), (c,0), (t,1)}, 6: s &lt;- c + s ---&gt; # (pOp)
 P |- {(input,1), (x,1), (s,0), (c,0), (t,1)}, 7: c &lt;- c + 1 ---&gt; # (pOp)
 P |- {(input,1), (x,1), (s,0), (c,1), (t,1)}, 8: goto 4 ---&gt; # (pGoto)
 P |- {(input,1), (x,1), (s,0), (c,1), (t,1)}, 4: t &lt;- c &lt; x ---&gt; # (pOp)
-P |- {(input,1), (x,1), (s,0), (c,1), (t,0)}, 5: ifn t goto 9 ---&gt; # (pIfn1)
+P |- {(input,1), (x,1), (s,0), (c,1), (t,0)}, 5: ifn t goto 9 ---&gt; # (pIfnNot0)
 P |- {(input,1), (x,1), (s,0), (c,1), (t,0)}, 9: rret &lt;- s ---&gt; # (pTempVar)
 P |- {(input,1), (x,1), (s,0), (c,1), (t,0), (rret, 0)}, 10: ret
 </code></pre>
