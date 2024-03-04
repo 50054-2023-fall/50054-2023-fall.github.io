@@ -317,7 +317,7 @@ The renaming operation is also known as the <span class="arithmatex">\(\alpha\)<
 <h3 id="evaluation-strategies">Evaluation strategies</h3>
 <p>So far we have three rules (roughly)  $\beta $ reduction, substitution, and  $\alpha $ renaming.</p>
 <p>Given a lambda term, in order to evaluate it, we need to identify places that we can apply these rules.</p>
-<p>We call a (sub-)expression of shape <span class="arithmatex">\(\lambda x.t_1\ t_2\)</span> a <em>redex</em>.</p>
+<p>We call a (sub-)expression of shape <span class="arithmatex">\((\lambda x.t_1)\ t_2\)</span> a <em>redex</em>.</p>
 <p>The task is to look for redexes in a lambda term and rewrite them by applying  $\beta $ reduction and substitution, and sometimes  $\alpha $ renaming to avoid capturing free variables.</p>
 <p>But in what order shall we apply these rules?</p>
 <p>There are two mostly known strategies</p>
