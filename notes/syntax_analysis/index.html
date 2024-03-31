@@ -477,17 +477,17 @@ T ::= i
 <p>Consider applying the top-down recursive parsing mentioned above to the input <code>1</code>, if the first production rule is always selected, the algorithm would not terminate. The issue is that the first production rule containing a recursion at the left-most position. To eliminate left recursion in general, we consider the following transformation.</p>
 <p>Let <code>N</code> be a non-terminal, <span class="arithmatex">\(\alpha_i\)</span> and
 <span class="arithmatex">\(\beta_j\)</span> be sequences of symbols (consist of terminals and non-terminals)</p>
-<p>Left recursive grammar rules
-$$
+<p>Left recursive grammar rules</p>
+<div class="arithmatex">\[
 \begin{array}{rcl}
-N &amp; ::= &amp; N\alpha_1 \
-&amp; ... &amp; \
-N &amp; ::= &amp; N\alpha_n \
-N &amp; ::= &amp; \beta_1 \
-&amp; ... &amp; \
+N &amp; ::= &amp; N\alpha_1 \\
+&amp; ... &amp; \\
+N &amp; ::= &amp; N\alpha_n \\
+N &amp; ::= &amp; \beta_1 \\
+&amp; ... &amp; \\
 N &amp; ::= &amp; \beta_m
 \end{array}
-$$</p>
+\]</div>
 <p>can be transformed into</p>
 <div class="arithmatex">\[
 \begin{array}{rcl}
@@ -561,15 +561,15 @@ Here <code>k</code> refers to the number of leading symbols from the input we ne
 <p>Let <span class="arithmatex">\(\sigma\)</span> denote a symbol, (it could be a terminal or a non-terminal).
 Let <span class="arithmatex">\(\overline{\sigma}\)</span> denote a sequence of symbols.
 Given a grammar <span class="arithmatex">\(G\)</span> we define the following functions <span class="arithmatex">\(null(\overline{\sigma},G)\)</span>, <span class="arithmatex">\(first(\overline{\sigma},G)\)</span> and <span class="arithmatex">\(follow(\sigma, G)\)</span></p>
-<p><span class="arithmatex">\(null(\overline{\sigma},G)\)</span> checks whether the language denoted by <span class="arithmatex">\(\overline{\sigma}\)</span> contains the empty sequence.
-$$
+<p><span class="arithmatex">\(null(\overline{\sigma},G)\)</span> checks whether the language denoted by <span class="arithmatex">\(\overline{\sigma}\)</span> contains the empty sequence.</p>
+<div class="arithmatex">\[
 \begin{array}{rcl}
-null(t,G) &amp; = &amp; false \
-null(\epsilon,G) &amp; = &amp; true \
-null(N,G) &amp; = &amp; \bigvee_{N::=\overline{\sigma} \in G} null(\overline{\sigma},G) \
+null(t,G) &amp; = &amp; false \\
+null(\epsilon,G) &amp; = &amp; true \\
+null(N,G) &amp; = &amp; \bigvee_{N::=\overline{\sigma} \in G} null(\overline{\sigma},G) \\
 null(\sigma_1...\sigma_n,G) &amp; = &amp; null(\sigma_1,G) \wedge ... \wedge null(\sigma_n,G)
 \end{array}
-$$</p>
+\]</div>
 <p><span class="arithmatex">\(first(\overline{\sigma},G)\)</span> computes the set of leading terminals from the language denoted by <span class="arithmatex">\(\overline{\sigma}\)</span>.</p>
 <div class="arithmatex">\[
 \begin{array}{rcl}
