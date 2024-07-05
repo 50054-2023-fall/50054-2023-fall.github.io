@@ -92,89 +92,89 @@
 </ol>
 <h2 id="type-checking-for-lambda-calculus">Type Checking for Lambda Calculus</h2>
 <p>To illustrate the proocess of type checking for lambda calculus, we consider adding types and type annotations to the lambda calculus language. </p>
-<p>Recall the lambda calculus syntax, with the following adaptation</p>
-<div class="arithmatex">\[
+<p>Recall the lambda calculus syntax, with the following adaptation
+$$
 \begin{array}{rccl}
- {\tt (Lambda\ Terms)} &amp; t &amp; ::= &amp; x \mid \lambda x:T.t \mid t\ t \mid let\ x:T =\ t\ in\ t \mid  if\ t\ then\ t\ else\ t \mid t\ op\ t \mid c \mid fix\ t \\
- {\tt (Builtin\ Operators)} &amp; op &amp; ::= &amp; + \mid - \mid * \mid / \mid\ == \\
- {\tt (Builtin\ Constants)} &amp; c &amp; ::= &amp; 0 \mid 1 \mid ... \mid true \mid false \\
- {\tt (Types)} &amp; T &amp; ::= &amp; int \mid bool \mid T \rightarrow T \\ 
+ {\tt (Lambda\ Terms)} &amp; t &amp; ::= &amp; x \mid \lambda x:T.t \mid t\ t \mid let\ x:T =\ t\ in\ t \mid  if\ t\ then\ t\ else\ t \mid t\ op\ t \mid c \mid fix\ t \
+ {\tt (Builtin\ Operators)} &amp; op &amp; ::= &amp; + \mid - \mid * \mid / \mid\ == \
+ {\tt (Builtin\ Constants)} &amp; c &amp; ::= &amp; 0 \mid 1 \mid ... \mid true \mid false \
+ {\tt (Types)} &amp; T &amp; ::= &amp; int \mid bool \mid T \rightarrow T \ 
  {\tt (Type\ Environments)} &amp; \Gamma &amp; \subseteq &amp; (x \times T)
 \end{array}
-\]</div>
+$$</p>
 <p>The difference is that the lambda abstraction <span class="arithmatex">\(\lambda x:T.t\)</span> now carries a <em>type annotation</em> of the lambda-bound variable. (Similar observation applies to let-binding) <span class="arithmatex">\(T\)</span> is a type symbol which can be <span class="arithmatex">\(int\)</span> or <span class="arithmatex">\(bool\)</span> or a function type <span class="arithmatex">\(T \rightarrow T\)</span>. The <span class="arithmatex">\(\rightarrow\)</span> type operator is right associative, i.e. <span class="arithmatex">\(T_1 \rightarrow T_2 \rightarrow T_3\)</span> is parsed as <span class="arithmatex">\(T_1 \rightarrow (T_2 \rightarrow T_3)\)</span>. Let's call this extended version of lambda calculus as <em>Simply Typed Lambda Calculus</em>.</p>
 <p>Note that all the existing definitions for dynamic semantics of lambda calculus can be brought-forward (and extended) to support Simply Typed Lambda Calculus. We omit the details.</p>
 <p>We formalize the type-checking process in a <strong>relation</strong> <span class="arithmatex">\(\Gamma \vdash t : T\)</span>, where <span class="arithmatex">\(\Gamma\)</span> is a mapping from variables to types.
 We write <span class="arithmatex">\(dom(\Gamma)\)</span> to denote the domain of <span class="arithmatex">\(\Gamma\)</span>, i.e. <span class="arithmatex">\(\{ X \mid (x,T) \in \Gamma \}\)</span>. We assume for all <span class="arithmatex">\(x \in dom(\Gamma)\)</span>, there exists only one entry of <span class="arithmatex">\((x,T) \in \Gamma\)</span>.</p>
 <p>Since <span class="arithmatex">\(\Gamma \vdash t : T\)</span> is relation, what type-checking attempts to verify is the following. <em>Given a type environment <span class="arithmatex">\(\Gamma\)</span> and lambda term <span class="arithmatex">\(t\)</span> and a type <span class="arithmatex">\(T\)</span>, <span class="arithmatex">\(t\)</span> can be given a type <span class="arithmatex">\(T\)</span> under <span class="arithmatex">\(\Gamma\)</span></em>.</p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{cc}
-{\tt (lctInt)} &amp; \begin{array}{c} \\
+{\tt (lctInt)} &amp; \begin{array}{c} \
                       c\ {\tt is\ an\ integer}
-                      \\ \hline
+                      \ \hline
                       \Gamma \vdash c : int
-                      \end{array} \\ \\  
+                      \end{array} \ \<br />
 {\tt (lctBool)} &amp; \begin{array}{c} 
-                      c\in \{ true, false\}
-                      \\ \hline
+                      c\in { true, false}
+                      \ \hline
                       \Gamma \vdash c : bool
                       \end{array}
 \end{array}
-\]</div>
-<p>The rule <span class="arithmatex">\({\tt (lctInt)}\)</span> checks whether the given constant value is an integer.
+$$
+The rule <span class="arithmatex">\({\tt (lctInt)}\)</span> checks whether the given constant value is an integer.
 The rule <span class="arithmatex">\({\tt (lctBool)}\)</span> checks whether the given constant value is a boolean.</p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{cc}
 {\tt (lctVar)} &amp; \begin{array}{c} 
-               (x, T) \in \Gamma  \\
+               (x, T) \in \Gamma  \
                \hline
                \Gamma \vdash x : T 
                \end{array} 
 \end{array}
-\]</div>
-<p>In rule <span class="arithmatex">\({\tt (lctVar)}\)</span>, we type check a variable <span class="arithmatex">\(x\)</span> against a type <span class="arithmatex">\(T\)</span>, which is only valid where <span class="arithmatex">\((x,T)\)</span> can be found in the type environment <span class="arithmatex">\(\Gamma\)</span>.</p>
-<div class="arithmatex">\[
+$$
+In rule <span class="arithmatex">\({\tt (lctVar)}\)</span>, we type check a variable <span class="arithmatex">\(x\)</span> against a type <span class="arithmatex">\(T\)</span>, which is only valid where <span class="arithmatex">\((x,T)\)</span> can be found in the type environment <span class="arithmatex">\(\Gamma\)</span>.</p>
+<p>$$
 \begin{array}{cc}
 {\tt (lctLam)} &amp; \begin{array}{c}
-               \Gamma \oplus (x, T) \vdash t : T'  \\
+               \Gamma \oplus (x, T) \vdash t : T'  \
                \hline
                \Gamma \vdash \lambda x : T.t :T \rightarrow T' 
                \end{array} 
 \end{array}
-\]</div>
-<p>In rule <span class="arithmatex">\({\tt (lctLam)}\)</span>, we type check a lambda abstraction against a type <span class="arithmatex">\(T\rightarrow T'\)</span>. This is only valid if the body of the lambda expression <span class="arithmatex">\(t\)</span> has type <span class="arithmatex">\(T'\)</span> under the extended type environment <span class="arithmatex">\(\Gamma \oplus (x, T)\)</span>.</p>
-<div class="arithmatex">\[
+$$
+In rule <span class="arithmatex">\({\tt (lctLam)}\)</span>, we type check a lambda abstraction against a type <span class="arithmatex">\(T\rightarrow T'\)</span>. This is only valid if the body of the lambda expression <span class="arithmatex">\(t\)</span> has type <span class="arithmatex">\(T'\)</span> under the extended type environment <span class="arithmatex">\(\Gamma \oplus (x, T)\)</span>.
+$$
 \begin{array}{cc}
 {\tt (lctApp)} &amp; \begin{array}{c}
                \Gamma \vdash t_1 : T_1 \rightarrow T_2 \ \ \ \
-               \Gamma \vdash t_2 : T_1 \\
+               \Gamma \vdash t_2 : T_1 \
                \hline
                \Gamma \vdash  t_1\ t_2 :T_2 
                \end{array} 
 \end{array}
-\]</div>
-<p>In rule <span class="arithmatex">\({\tt (lctApp)}\)</span>, we type check a function application, applying <span class="arithmatex">\(t_1\)</span> to <span class="arithmatex">\(t_2\)</span>, against a type <span class="arithmatex">\(T_2\)</span>. This is only valid if <span class="arithmatex">\(t_1\)</span> is having type <span class="arithmatex">\(T_1 \rightarrow T_2\)</span> and <span class="arithmatex">\(t_2\)</span> is having type <span class="arithmatex">\(T_1\)</span>.</p>
-<div class="arithmatex">\[
+$$
+In rule <span class="arithmatex">\({\tt (lctApp)}\)</span>, we type check a function application, applying <span class="arithmatex">\(t_1\)</span> to <span class="arithmatex">\(t_2\)</span>, against a type <span class="arithmatex">\(T_2\)</span>. This is only valid if <span class="arithmatex">\(t_1\)</span> is having type <span class="arithmatex">\(T_1 \rightarrow T_2\)</span> and <span class="arithmatex">\(t_2\)</span> is having type <span class="arithmatex">\(T_1\)</span>.</p>
+<p>$$
 \begin{array}{cc}
 {\tt (lctLet)} &amp; \begin{array}{c}
                \Gamma \vdash t_1 : T_1 \ \ \ \
-               \Gamma \oplus (x, T_1) \vdash t_2 : T_2 \\
+               \Gamma \oplus (x, T_1) \vdash t_2 : T_2 \
                \hline
                \Gamma \vdash  let\ x:T_1 = t_1\ in\ t_2 :T_2 
                \end{array} 
 \end{array}
-\]</div>
-<p>In rule <span class="arithmatex">\({\tt (lctLet)}\)</span>, we type check a let binding, <span class="arithmatex">\(let\ x:T_1 = t_1\ in\ t_2\)</span> against type <span class="arithmatex">\(T_2\)</span>. This is only valid if <span class="arithmatex">\(t_1\)</span> has type <span class="arithmatex">\(T_1\)</span> and <span class="arithmatex">\(t_2\)</span> has type <span class="arithmatex">\(T_2\)</span> under the extended environment  <span class="arithmatex">\(\Gamma \oplus (x, T_1)\)</span>.</p>
-<div class="arithmatex">\[
+$$
+In rule <span class="arithmatex">\({\tt (lctLet)}\)</span>, we type check a let binding, <span class="arithmatex">\(let\ x:T_1 = t_1\ in\ t_2\)</span> against type <span class="arithmatex">\(T_2\)</span>. This is only valid if <span class="arithmatex">\(t_1\)</span> has type <span class="arithmatex">\(T_1\)</span> and <span class="arithmatex">\(t_2\)</span> has type <span class="arithmatex">\(T_2\)</span> under the extended environment  <span class="arithmatex">\(\Gamma \oplus (x, T_1)\)</span>.</p>
+<p>$$
 \begin{array}{cc}
 {\tt (lctIf)} &amp; \begin{array}{c}
-               \Gamma \vdash t_1 : bool \ \ \ \Gamma \vdash t_2 : T \ \ \ \ \Gamma \vdash t_3 : T \\
+               \Gamma \vdash t_1 : bool \ \ \ \Gamma \vdash t_2 : T \ \ \ \ \Gamma \vdash t_3 : T \
                \hline
                \Gamma \vdash  if\ t_1\ then\ t_2\ else\ t_3 : T 
                \end{array}
 \end{array}
-\]</div>
-<p>In rule <span class="arithmatex">\({\tt (lctIf)}\)</span>, we type check a if-then-else expression against type <span class="arithmatex">\(T\)</span>. This is only valid if 
+$$
+In rule <span class="arithmatex">\({\tt (lctIf)}\)</span>, we type check a if-then-else expression against type <span class="arithmatex">\(T\)</span>. This is only valid if 
 <span class="arithmatex">\(t_1\)</span> has type <span class="arithmatex">\(bool\)</span> and both <span class="arithmatex">\(t_1\)</span> and <span class="arithmatex">\(t_2\)</span> have type <span class="arithmatex">\(T\)</span>.</p>
 <div class="arithmatex">\[
 \begin{array}{cc}
@@ -295,21 +295,21 @@ This is due to the fact that we can only give one type to <code>f</code>, either
 \]</div>
 <p>In the above grammar rules, we remove the type annotations from the lambda abstraction and let binding. Our type inference algorithm should be able to recover them.  We add the type variable directly to the type <span class="arithmatex">\(T\)</span> rule instead of introducing the <span class="arithmatex">\(\hat{T}\)</span> rule for conciseness. We introduce a type scheme term <span class="arithmatex">\(\sigma\)</span> which is required for polymorphic types.  </p>
 <p>We describe the Hindley Milner Type Checking rules as follows</p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{rc}
-{\tt (hmInt)} &amp; \begin{array}{c} \\
+{\tt (hmInt)} &amp; \begin{array}{c} \
                       c\ {\tt is\ an\ integer}
-                      \\ \hline
+                      \ \hline
                       \Gamma \vdash c : int
-                      \end{array} \\ \\ 
+                      \end{array} \ \ 
 {\tt (hmBool)} &amp; \begin{array}{c} 
-                      c\in \{ true, false\}
-                      \\ \hline
+                      c\in { true, false}
+                      \ \hline
                       \Gamma \vdash c : bool
                       \end{array}
 \end{array}
-\]</div>
-<p>The rules for constants remain unchanged. </p>
+$$
+The rules for constants remain unchanged. </p>
 <div class="arithmatex">\[
 \begin{array}{rc}
 {\tt (hmVar)} &amp; \begin{array}{c}
@@ -337,69 +337,69 @@ This is due to the fact that we can only give one type to <code>f</code>, either
 \]</div>
 <p>In rule <span class="arithmatex">\({\tt (hmLam)}\)</span> we type check the lambda abstraction against <span class="arithmatex">\(T\rightarrow T'\)</span>. It is largely the same as the <span class="arithmatex">\({\tt (lctLam)}\)</span> rule for simply typed lambda calculus, except that there is no type annotation to the lambda bound variable <span class="arithmatex">\(x\)</span>.
 The rule <span class="arithmatex">\({\tt (hmApp)}\)</span> is exactly the same as <span class="arithmatex">\({\tt (lctApp)}\)</span>. </p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{rc}
 {\tt (hmFix)} &amp; \begin{array}{c}
                 (fix,\forall \alpha. (\alpha\rightarrow \alpha)\rightarrow \alpha)\in \Gamma
-                \\ \hline 
+                \ \hline 
                 \Gamma \vdash fix:\forall \alpha. (\alpha\rightarrow \alpha) \rightarrow \alpha
                 \end{array}
 \end{array}
-\]</div>
-<p>To type check the <span class="arithmatex">\(fix\)</span> operator, we assume that <span class="arithmatex">\(fix\)</span> is predefined in the language library and its type is given in the initial type environment <span class="arithmatex">\(\Gamma_{init}\)</span>.</p>
-<div class="arithmatex">\[
+$$
+To type check the <span class="arithmatex">\(fix\)</span> operator, we assume that <span class="arithmatex">\(fix\)</span> is predefined in the language library and its type is given in the initial type environment <span class="arithmatex">\(\Gamma_{init}\)</span>.</p>
+<p>$$
 \begin{array}{rc}
 {\tt (hmIf)} &amp; \begin{array}{c}
                 \Gamma \vdash t_1 : bool \ \ \ 
                 \Gamma \vdash t_2 : \sigma \ \ \ 
                 \Gamma \vdash t_3 : \sigma 
-                \\ \hline
-                \Gamma \vdash if\ t_1\ \{ t_2\}\ else \{ t_3 \}: \sigma
-               \end{array} \\ \\ 
+                \ \hline
+                \Gamma \vdash if\ t_1\ { t_2}\ else { t_3 }: \sigma
+               \end{array} \ \ 
 \end{array}
-\]</div>
-<p>We made minor adjustment to the rule handling if-else expression, by replacing <span class="arithmatex">\(T\)</span> with <span class="arithmatex">\(\sigma\)</span>.</p>
-<div class="arithmatex">\[
+$$
+We made minor adjustment to the rule handling if-else expression, by replacing <span class="arithmatex">\(T\)</span> with <span class="arithmatex">\(\sigma\)</span>.</p>
+<p>$$
 \begin{array}{rc}
 {\tt (hmOp1)} &amp; \begin{array}{c}
-               \Gamma \vdash t_1 : int \ \ \ \Gamma \vdash t_2 : int \ \ \ op\in\{+,-,*,/\} \\
+               \Gamma \vdash t_1 : int \ \ \ \Gamma \vdash t_2 : int \ \ \ op\in{+,-,*,/} \
                \hline
                \Gamma \vdash  t_1\ op\ t_2 : int 
-               \end{array} \\ \\ 
+               \end{array} \ \ 
 {\tt (hmOp2)} &amp; \begin{array}{c}
-               \Gamma \vdash t_1 : int \ \ \ \Gamma \vdash t_2 : int \\
+               \Gamma \vdash t_1 : int \ \ \ \Gamma \vdash t_2 : int \
                \hline
                \Gamma \vdash  t_1\ ==\ t_2 : bool 
-               \end{array} \\ \\ 
+               \end{array} \ \ 
 {\tt (hmOp3)} &amp; \begin{array}{c}
-               \Gamma \vdash t_1 : bool \ \ \ \Gamma \vdash t_2 : bool \\
+               \Gamma \vdash t_1 : bool \ \ \ \Gamma \vdash t_2 : bool \
                \hline
                \Gamma \vdash  t_1\ ==\ t_2 : bool 
-               \end{array} \\ \\  
+               \end{array} \ \<br />
 \end{array}
-\]</div>
-<p>The type checking rules for binary operation remain unchanged.</p>
-<div class="arithmatex">\[
+$$
+The type checking rules for binary operation remain unchanged.</p>
+<p>$$
 \begin{array}{rc}
 {\tt (hmLet)} &amp; \begin{array}{c}
                \Gamma \vdash t_1 : \sigma_1 \ \ \ \
-               \Gamma \oplus (x, \sigma_1) \vdash t_2 : T_2 \\
+               \Gamma \oplus (x, \sigma_1) \vdash t_2 : T_2 \
                \hline
                \Gamma \vdash  let\ x = t_1\ in\ t_2 :T_2 
-               \end{array} \\ \\ 
+               \end{array} \ \ 
 {\tt (hmInst)} &amp; \begin{array}{c}
                 \Gamma \vdash t : \sigma_1 \ \ \ \ \sigma_1 \sqsubseteq \sigma_2
-                \\ \hline
+                \ \hline
                 \Gamma \vdash t : \sigma_2
-                \end{array} \\ \\ 
+                \end{array} \ \ 
 {\tt (hmGen)} &amp; \begin{array}{c}
                 \Gamma \vdash t : \sigma \ \ \ \ \alpha \not\in ftv(\Gamma)
-                \\ \hline 
+                \ \hline 
                 \Gamma \vdash t : \forall \alpha.\sigma
                 \end{array}
 \end{array}
-\]</div>
-<p>In the rule <span class="arithmatex">\({\tt (hmLet)}\)</span>, we first type check <span class="arithmatex">\(t_1\)</span> againt <span class="arithmatex">\(\sigma_1\)</span>, which is a type scheme, which allows <span class="arithmatex">\(t_1\)</span> to have a generic type. Under the extended type environment <span class="arithmatex">\(\Gamma \oplus (x, \sigma_1)\)</span> we type-check <span class="arithmatex">\(t_2\)</span>. </p>
+$$
+In the rule <span class="arithmatex">\({\tt (hmLet)}\)</span>, we first type check <span class="arithmatex">\(t_1\)</span> againt <span class="arithmatex">\(\sigma_1\)</span>, which is a type scheme, which allows <span class="arithmatex">\(t_1\)</span> to have a generic type. Under the extended type environment <span class="arithmatex">\(\Gamma \oplus (x, \sigma_1)\)</span> we type-check <span class="arithmatex">\(t_2\)</span>. </p>
 <p>For the <span class="arithmatex">\({\tt (hmLet)}\)</span> rule to work as intended, we need two more rules, namely, <span class="arithmatex">\({\tt (hmInst)}\)</span> and <span class="arithmatex">\({\tt (hmGen)}\)</span>. In rule <span class="arithmatex">\({\tt (hmInst)}\)</span> we allow a term <span class="arithmatex">\(t\)</span> to be type-checked against <span class="arithmatex">\(\sigma_2\)</span>, provided we can type check it against <span class="arithmatex">\(\sigma_1\)</span> and <span class="arithmatex">\(\sigma_1 \sqsubseteq \sigma_2\)</span>.</p>
 <h4 id="definition-type-instances">Definition - Type Instances</h4>
 <p>Let <span class="arithmatex">\(\sigma_1\)</span> and <span class="arithmatex">\(\sigma_2\)</span> be type schemes. We say <span class="arithmatex">\(\sigma_1 \sqsubseteq \sigma_2\)</span> iff <span class="arithmatex">\(\sigma_1 = \forall \alpha. \sigma_1'\)</span> and there exists a type subsitution <span class="arithmatex">\(\Psi\)</span> such that <span class="arithmatex">\(\Psi(\sigma_1') = \sigma_2\)</span>.</p>
@@ -559,24 +559,24 @@ Same observation applies to <span class="arithmatex">\({\tt (wFix)}\)</span> sin
 \end{array}
 \]</div>
 <p>The <span class="arithmatex">\({\tt (wLet)}\)</span> rule infers a type for the let binding. We first infer the type <span class="arithmatex">\(T_1\)</span> and type substitutions <span class="arithmatex">\(\Psi_1\)</span>. By applying <span class="arithmatex">\(\Psi_1\)</span> to <span class="arithmatex">\(\Gamma\)</span> we hope to ground some type variables in <span class="arithmatex">\(\Gamma\)</span>. We apply a helper function <span class="arithmatex">\(gen\)</span> to generalize <span class="arithmatex">\(T_1\)</span> w.r.t <span class="arithmatex">\(\Psi_1(\Gamma)\)</span>, and use it as the type for <span class="arithmatex">\(x\)</span> to infer <span class="arithmatex">\(t_2\)</span> type. Finally, we return <span class="arithmatex">\(T_2\)</span> as the inferred type and <span class="arithmatex">\(\Psi_2 \circ \Psi_1\)</span> as the type substitutions. </p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{rc}
 {\tt (wOp1)} &amp; \begin{array}{c}
-                op \in \{+,-,*,/\} \\ 
-                \Gamma, t_1 \vDash T_1, \Psi_1 \ \ \ \Psi_1(\Gamma), t_2 \vDash T_2, \Psi_2 \\ 
-                mgu(\Psi_2(T_1), T_2, int) = \Psi_3   
-                \\ \hline 
+                op \in {+,-,*,/} \ 
+                \Gamma, t_1 \vDash T_1, \Psi_1 \ \ \ \Psi_1(\Gamma), t_2 \vDash T_2, \Psi_2 \ 
+                mgu(\Psi_2(T_1), T_2, int) = \Psi_3 <br />
+                \ \hline 
                 \Gamma, t_1\ op\ t_2 \vDash int, \Psi_3 \circ \Psi_2 \circ \Psi_1 
-                \end{array} \\ \\ 
+                \end{array} \ \ 
 {\tt (wOp2)} &amp; \begin{array}{c}
-                \Gamma, t_1 \vDash T_1, \Psi_1 \ \ \ \Psi_1(\Gamma), t_2 \vDash T_2, \Psi_2 \\ 
-                mgu(\Psi_2(T_1), T_2) = \Psi_3   
-                \\ \hline 
+                \Gamma, t_1 \vDash T_1, \Psi_1 \ \ \ \Psi_1(\Gamma), t_2 \vDash T_2, \Psi_2 \ 
+                mgu(\Psi_2(T_1), T_2) = \Psi_3 <br />
+                \ \hline 
                 \Gamma, t_1\ ==\ t_2 \vDash bool, \Psi_3 \circ \Psi_2 \circ \Psi_1 
                 \end{array}
 \end{array}
-\]</div>
-<p>The rule <span class="arithmatex">\({\tt (wOp1)}\)</span> handles the type inference for arithmetic binary operation. The result type must be <span class="arithmatex">\(int\)</span>. In the premises, we infer the type of the left operand <span class="arithmatex">\(t_1\)</span> to be <span class="arithmatex">\(T_1\)</span> with a type substitution <span class="arithmatex">\(\Psi_1\)</span>. We apply <span class="arithmatex">\(\Psi_1\)</span> to <span class="arithmatex">\(\Gamma\)</span> hoping to ground some type variables. We continue to infer the right operand <span class="arithmatex">\(t_2\)</span> with a type <span class="arithmatex">\(T_2\)</span> and <span class="arithmatex">\(\Psi_2\)</span>. Finally we need to unify 
+$$
+The rule <span class="arithmatex">\({\tt (wOp1)}\)</span> handles the type inference for arithmetic binary operation. The result type must be <span class="arithmatex">\(int\)</span>. In the premises, we infer the type of the left operand <span class="arithmatex">\(t_1\)</span> to be <span class="arithmatex">\(T_1\)</span> with a type substitution <span class="arithmatex">\(\Psi_1\)</span>. We apply <span class="arithmatex">\(\Psi_1\)</span> to <span class="arithmatex">\(\Gamma\)</span> hoping to ground some type variables. We continue to infer the right operand <span class="arithmatex">\(t_2\)</span> with a type <span class="arithmatex">\(T_2\)</span> and <span class="arithmatex">\(\Psi_2\)</span>. Finally we need to unify 
 <span class="arithmatex">\(\Psi_2(T_1)\)</span>, <span class="arithmatex">\(T_2\)</span> and <span class="arithmatex">\(int\)</span> to form <span class="arithmatex">\(\Psi_3\)</span>. Note that we don't need to apply <span class="arithmatex">\(\Psi_1\)</span> to <span class="arithmatex">\(T_2\)</span> during the unification, because <span class="arithmatex">\(T_2\)</span> is infered from <span class="arithmatex">\(\Psi_1(\Gamma)\)</span>, i.e. type variables in <span class="arithmatex">\(T_2\)</span> is either already in the domain of <span class="arithmatex">\(\Psi_1(\Gamma)\)</span>, or it is enirely fresh, i.e. not in <span class="arithmatex">\(T_1\)</span> and <span class="arithmatex">\(\Psi_1\)</span>. We return <span class="arithmatex">\(\Psi_3 \circ \Psi_2 \circ \Psi_1\)</span> as the final substitution. </p>
 <p>In rule <span class="arithmatex">\({\tt (wOp2)}\)</span>, the binary operator is an equality check. It works similar to the rule <span class="arithmatex">\({\tt (wOp1)}\)</span> except that we return <span class="arithmatex">\(bool\)</span> as the result type, and we do not include <span class="arithmatex">\(int\)</span> as the additional operand when unifying the the types of <span class="arithmatex">\(\Psi_2(T_1)\)</span> and <span class="arithmatex">\(T_2\)</span>. </p>
 <div class="arithmatex">\[

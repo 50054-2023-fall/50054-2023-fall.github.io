@@ -269,15 +269,9 @@ widely used in compiler design and program verification. </p>
 <div class="arithmatex">\[P \vdash (L, li, p) \longrightarrow (L', li', p')\]</div>
 <p>The third component <span class="arithmatex">\(p\)</span> in the program context is a label from the preceding instruction based on the execution. </p>
 <div class="arithmatex">\[
-{\tt (pConst)} ~~~ P \vdash (L, l:  d \leftarrow c, p) \longrightarrow (L \oplus (d,c), P(l+1), l)
-\]</div>
-<div class="arithmatex">\[
-{\tt (pRegister)} ~~~P \vdash (L, l: d \leftarrow r, p) \longrightarrow (L \oplus (d,L(r)), P(l+1), l)
-\]</div>
-<div class="arithmatex">\[
-{\tt (pTempVar)} ~~~P \vdash (L, l: d \leftarrow t, p ) \longrightarrow (L \oplus (d,L(t)), P(l+1), l)
-\]</div>
-<div class="arithmatex">\[
+{\tt (pConst)} ~~~ P \vdash (L, l:  d \leftarrow c, p) \longrightarrow (L \oplus (d,c), P(l+1), l) \\ \\
+{\tt (pRegister)} ~~~P \vdash (L, l: d \leftarrow r, p) \longrightarrow (L \oplus (d,L(r)), P(l+1), l) \\  \\
+{\tt (pTempVar)} ~~~P \vdash (L, l: d \leftarrow t, p ) \longrightarrow (L \oplus (d,L(t)), P(l+1), l) \\ \\
 {\tt (pGoto)} ~~ P \vdash (L, l:goto\ l', p) \longrightarrow (L, P(l'), l)
 \]</div>
 <div class="arithmatex">\[
@@ -441,11 +435,11 @@ For convenience, we also write </p>
 </ul>
 <h5 id="lemma-1-dominance-is-transitive">Lemma 1 - Dominance is transitive</h5>
 <p><span class="arithmatex">\(v_1 \preceq v_2\)</span> and <span class="arithmatex">\(v_2 \preceq v_3\)</span> implies that <span class="arithmatex">\(v_1 \preceq v_3\)</span>.</p>
-<h5 id="lemma-2-dominance-is-reflexive">Lemma 2 - Dominance is reflexive</h5>
+<h5 id="lemma-2-domaince-is-reflexive">Lemma 2 - Domaince is reflexive</h5>
 <p>For any vertex <span class="arithmatex">\(v\)</span>, we have <span class="arithmatex">\(v \preceq v\)</span>.</p>
-<h5 id="definition-6-strict-dominance">Definition 6 - Strict Dominance</h5>
+<h5 id="defintion-6-strict-dominance">Defintion 6 - Strict Dominance</h5>
 <p>We say <span class="arithmatex">\(v_1\)</span> stricly domainates <span class="arithmatex">\(v_2\)</span>, written <span class="arithmatex">\(v_1 \prec v_2\)</span> iff <span class="arithmatex">\(v_1 \preceq v_2\)</span> and <span class="arithmatex">\(v_1 \neq v_2\)</span>.</p>
-<h5 id="definition-7-immediate-dominator">Definition 7 - Immediate Dominator</h5>
+<h5 id="defintion-7-immediate-dominator">Defintion 7 - Immediate Dominator</h5>
 <p>We say <span class="arithmatex">\(v_1\)</span> is the immediate dominator of <span class="arithmatex">\(v_2\)</span>, written <span class="arithmatex">\(v_1 = idom(v_2)\)</span> iff <span class="arithmatex">\(v_1 \prec v_2\)</span> and not exists <span class="arithmatex">\(v_3\)</span> such that <span class="arithmatex">\(v_1 \prec v_3\)</span> and <span class="arithmatex">\(v_3 \prec v_2\)</span>.</p>
 <p>Note that <span class="arithmatex">\(idom()\)</span> is a function, i.e. the immediate dominator of a vertex must be unique if it exists.</p>
 <h5 id="dominator-tree">Dominator Tree</h5>
@@ -914,7 +908,16 @@ ren(K, t) = K(t).peek() match
 <td><code>{x:[0], s:[0,1], c:[0,1], t:[0]}</code></td>
 <td></td>
 <td></td>
+<td></td>
+</tr>
+<tr>
 <td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}}</code></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
 </tr>
 <tr>
 <td>10</td>
@@ -923,7 +926,16 @@ ren(K, t) = K(t).peek() match
 <td><code>{x:[0], s:[0,1], c:[0,1], t:[0]}</code></td>
 <td></td>
 <td></td>
+<td></td>
+</tr>
+<tr>
 <td><code>{1:{x}, 2:{s}. 3:{c}, 4:{s,c,t}}</code></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
 </table>

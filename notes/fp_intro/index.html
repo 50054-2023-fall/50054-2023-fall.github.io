@@ -317,15 +317,15 @@ The renaming operation is also known as the <span class="arithmatex">\(\alpha\)<
 <h3 id="evaluation-strategies">Evaluation strategies</h3>
 <p>So far we have three rules (roughly)  $\beta $ reduction, substitution, and  $\alpha $ renaming.</p>
 <p>Given a lambda term, in order to evaluate it, we need to identify places that we can apply these rules.</p>
-<p>We call a (sub-)expression of shape <span class="arithmatex">\((\lambda x.t_1)\ t_2\)</span> a <em>redex</em>.</p>
-<p>The task is to look for redexes in a lambda term and rewrite them by applying  <span class="arithmatex">\(\beta\)</span> reduction and substitution, and sometimes  <span class="arithmatex">\(\alpha\)</span> renaming to avoid capturing free variables.</p>
+<p>We call a (sub-)expression of shape <span class="arithmatex">\(\lambda x.t_1\ t_2\)</span> a <em>redex</em>.</p>
+<p>The task is to look for redexes in a lambda term and rewrite them by applying  $\beta $ reduction and substitution, and sometimes  $\alpha $ renaming to avoid capturing free variables.</p>
 <p>But in what order shall we apply these rules?</p>
 <p>There are two mostly known strategies</p>
 <ol>
 <li>Inner-most, leftmost - Applicative Order Reduction (AOR)</li>
 <li>Outer-most, leftmost - Normal Order Reduction (NOR)</li>
 </ol>
-<p>Consider <span class="arithmatex">\((\lambda x. ((\lambda x. x)\ x))\ (\lambda y.y)\)</span>,</p>
+<p>Consider $(\lambda x. ((\lambda x. x)\ x))\ (\lambda y.y) $,</p>
 <ul>
 <li>AOR:</li>
 </ul>
@@ -470,10 +470,10 @@ two different ways of incorporating conditional expression in our lambda term la
 \]</div>
 <p>In the above we use a horizontal line to separate complex deduction rules that have some premise. The relations and statement written above the horizontal line are called the <strong>premises</strong>, and the relation the written below is called the <strong>conclusion</strong>. The conclusion holds if the premises are valid.</p>
 <ul>
-<li>The rule <span class="arithmatex">\({\tt (ifI)}\)</span> states that if we can evaluate  <span class="arithmatex">\(t_1\)</span> to  <span class="arithmatex">\(t_1'\)</span>, then  <span class="arithmatex">\(if\ t_1\ then\ t_2\ else\ t_3\)</span> can be evaluated to  <span class="arithmatex">\(if\ t_1' \ then\ t_2\ else\ t_3\)</span>. In otherwords, for us to reduce <span class="arithmatex">\(if\ t_1\ then\ t_2\ else\ t_3\)</span> to <span class="arithmatex">\(if\ t_1' \ then\ t_2\ else\ t_3\)</span>, a pre-condition is to reduce <span class="arithmatex">\(t_1\)</span> to <span class="arithmatex">\(t_1'\)</span>. </li>
-<li>The rule  <span class="arithmatex">\({\tt (ifT)}\)</span> states that if the conditional expression is <span class="arithmatex">\(true\)</span>, the entire term is evaluated to the then-branch.</li>
-<li>The rule  <span class="arithmatex">\({\tt (ifF)}\)</span> is similar. Rules  <span class="arithmatex">\({\tt (OpI1)}\)</span> and ${\tt (OpI2)} $ are similar to rule <span class="arithmatex">\({\tt (IfI)}\)</span>.</li>
-<li>The rule  <span class="arithmatex">\({\tt (OpC)}\)</span> invokes the built-in low level call to apply the binary operation to the two operands  <span class="arithmatex">\(c_1\)</span> and  <span class="arithmatex">\(c_2\)</span>.  </li>
+<li>The rule ${\tt (ifI)} $ states that if we can evaluate  <span class="arithmatex">\(t_1\)</span> to  $t_1' $, then  $if\ t_1\ then\ t_2\ else\ t_3 $ can be evaluated to  $if\ t_1' \ then\ t_2\ else\ t_3 $. In otherwords, for us to reduce $if\ t_1\ then\ t_2\ else\ t_3 $ to $if\ t_1' \ then\ t_2\ else\ t_3 $, a pre-condition is to reduce <span class="arithmatex">\(t_1\)</span> to <span class="arithmatex">\(t_1'\)</span>. </li>
+<li>The rule  ${\tt (ifT)} $ states that if the conditional expression is <span class="arithmatex">\(true\)</span>, the entire term is evaluated to the then-branch.</li>
+<li>The rule  ${\tt (ifF)} $ is similar. Rules  <span class="arithmatex">\({\tt (OpI1)}\)</span> and ${\tt (OpI2)} $ are similar to rule <span class="arithmatex">\({\tt (IfI)}\)</span>.</li>
+<li>The rule  ${\tt (OpC)} $ invokes the built-in low level call to apply the binary operation to the two operands  $c_1 $ and  $c_2 $.  </li>
 </ul>
 <p>The substitution rules and free variable function <span class="arithmatex">\(fv()\)</span> also extended too
 $$

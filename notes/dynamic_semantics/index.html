@@ -121,9 +121,9 @@ We model the memory environment of a SIMP program as pair of variable and values
 <p>The set of small step operational semantics for expressions is defined in a relation <span class="arithmatex">\(\Delta \vdash E \longrightarrow E'\)</span>.</p>
 <div class="arithmatex">\[
 {\tt (sVar)} ~~~ \Delta \vdash X \longrightarrow \Delta(X)
-\]</div>
-<p>The <span class="arithmatex">\({\tt (sVar)}\)</span> rule looks up the value of variable <span class="arithmatex">\(X\)</span> from the memory environment. If the variable is not found, it gets stuck and an error is returned.</p>
-<div class="arithmatex">\[
+$$
+The ${\tt (sVar)}$ rule looks up the value of variable $X$ from the memory environment. If the variable is not found, it gets stuck and an error is returned.
+$$
 \begin{array}{rc}
 {\tt (sOp1)} &amp; \begin{array}{c}
         \Delta \vdash E_1 \longrightarrow E_1'  
@@ -181,16 +181,16 @@ We model the memory environment of a SIMP program as pair of variable and values
      \end{array}
 \end{array}
 \]</div>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{cc}
 {\tt (sAssign2)} &amp; \begin{array}{c}
       \Delta' = \Delta \oplus (X, C)
-     \\ \hline
+     \ \hline
      (\Delta, X = C;) \longrightarrow (\Delta', nop)
      \end{array}
 \end{array}
-\]</div>
-<p>The rules <span class="arithmatex">\({\tt (sAssign1)}\)</span> and <span class="arithmatex">\({\tt (sAssign2)}\)</span> handle the assignment statements.</p>
+$$
+The rules <span class="arithmatex">\({\tt (sAssign1)}\)</span> and <span class="arithmatex">\({\tt (sAssign2)}\)</span> handle the assignment statements.</p>
 <ol>
 <li><span class="arithmatex">\({\tt (sAssign1)}\)</span> matches with the case that the RHS of the assignment is not a constant, it evaluates the RHS expression by one step.</li>
 <li><span class="arithmatex">\({\tt (sAssign2)}\)</span> matches with the case that the RHS is a constant, it updates the environment by setting <span class="arithmatex">\(C\)</span> as the new value of variable <span class="arithmatex">\(X\)</span>. The statement of the resulting configuration a <span class="arithmatex">\(nop\)</span>.</li>
@@ -443,11 +443,11 @@ Big step operatinal semantics in some literature is also called the structural o
 <h4 id="big-step-operational-semantics-for-simp-expressions">Big Step Operational Semantics for SIMP expressions</h4>
 <p>We define the big step oeprational semantics for SIMP expressions via a relation
 <span class="arithmatex">\(\Delta \vdash E \Downarrow C\)</span>, which reads under the memory environment <span class="arithmatex">\(\Delta\)</span> the expression <span class="arithmatex">\(E\)</span> is evaluated constant <span class="arithmatex">\(C\)</span>.</p>
-<p>We consider the following three rules</p>
-<div class="arithmatex">\[
+<p>We consider the following three rules
+$$
 {\tt (bConst)} ~~~~ \Delta \vdash C \Downarrow C
-\]</div>
-<p>In case that the expression is a constant, we return the constant itself.</p>
+$$
+In case that the expression is a constant, we return the constant itself.</p>
 <div class="arithmatex">\[
 {\tt (bVar)} ~~~~ \Delta \vdash X \Downarrow \Delta(X)
 \]</div>
@@ -475,16 +475,16 @@ Big step operatinal semantics in some literature is also called the structural o
 <p>the last rule <span class="arithmatex">\({\tt (bParen)}\)</span> evaluates an expression enclosed by parantheses.  </p>
 <h4 id="big-step-operational-semantics-for-simp-statements">Big Step Operational Semantics for SIMP statements</h4>
 <p>We define the big step operational semantics for SIMP statement using a relation <span class="arithmatex">\((\Delta, S) \Downarrow \Delta'\)</span>, which says the program configuration <span class="arithmatex">\((\Delta, S)\)</span> is evaluated to result memory environment <span class="arithmatex">\(\Delta'\)</span> assuming <span class="arithmatex">\(S\)</span> is terminating under <span class="arithmatex">\(\Delta\)</span>. Note that big step operational semantics for SIMP statement can only defines the behavior of terminating program configurations.</p>
-<p>We consider the following rules</p>
-<div class="arithmatex">\[
+<p>We consider the following rules
+$$
 \begin{array}{rc}
 {\tt (bAssign)} &amp; \begin{array}{c}
     \Delta \vdash E \Downarrow C
-    \\ \hline
+    \ \hline
     (\Delta, X = E) \Downarrow \Delta \oplus (X, C)
     \end{array}
 \end{array}
-\]</div>
+$$</p>
 <p>In case that the statement is an assignment, we evaluate the RHS expression to a constant value <span class="arithmatex">\(c\)</span> and update the memory environment.</p>
 <div class="arithmatex">\[
 \begin{array}{rc}
@@ -714,14 +714,14 @@ We use <span class="arithmatex">\(L\)</span> to denote a memory environment whic
 <p>The dynamic semantics of the pseudo assembly program can be defined using a rule of shape <span class="arithmatex">\(P \vdash (L, li) \longrightarrow (L', li')\)</span>, which reads, given a PA program <span class="arithmatex">\(P\)</span>, the current program context <span class="arithmatex">\((L,li)\)</span> is evaluated to <span class="arithmatex">\((L', li')\)</span>. Note that we use a memory environment and program label instruction pair to denote a program context.</p>
 <div class="arithmatex">\[
 {\tt (pConst)}~~~P \vdash (L, l: d \leftarrow c) \longrightarrow (L \oplus (d,c), P(l+1))
-\]</div>
-<p>In the <span class="arithmatex">\({\tt (pConst)}\)</span> rule, we evaluate an assignment instruction of which the RHS is a constant. We update the value of the LHS in the memory environment as <span class="arithmatex">\(c\)</span> and move on to the next instruction.</p>
-<div class="arithmatex">\[
+$$
+In the ${\tt (pConst)}$ rule, we evaluate an assignment instruction of which the RHS is a constant. We update the value of the LHS in the memory environment as $c$ and move on to the next instruction.
+$$
 {\tt (pRegister)} ~~~P \vdash (L, l: d \leftarrow r) \longrightarrow (L \oplus (d,L(r)), P(l+1))  
 \]</div>
-<div class="arithmatex">\[{\tt (pTempVar)} ~~~P \vdash (L, l: d \leftarrow t) \longrightarrow (L \oplus (d,L(t)), P(l+1))
-\]</div>
-<p>In the <span class="arithmatex">\({\tt (pRegister)}\)</span> and the <span class="arithmatex">\({\tt (pTempVar)}\)</span> rules, we evaluate an assignment instruction of which the RHS is a register (or a temp variable). We look up the value of the register (or the temp variable) from the memory environment and use it as the updated value of the LHS in the memory environment. We move on to the next label instruction.</p>
+<p>$${\tt (pTempVar)} ~~~P \vdash (L, l: d \leftarrow t) \longrightarrow (L \oplus (d,L(t)), P(l+1))
+$$
+In the <span class="arithmatex">\({\tt (pRegister)}\)</span> and the <span class="arithmatex">\({\tt (pTempVar)}\)</span> rules, we evaluate an assignment instruction of which the RHS is a register (or a temp variable). We look up the value of the register (or the temp variable) from the memory environment and use it as the updated value of the LHS in the memory environment. We move on to the next label instruction.</p>
 <div class="arithmatex">\[
 \begin{array}{rc}
 {\tt (pOp)} &amp;  \begin{array}{c}
@@ -842,94 +842,94 @@ These functions are mapping program objects from the syntactic domain to <em>mat
 <p>Let <span class="arithmatex">\(\Sigma = {\cal P} (X \times (Int\cup Bool))\)</span></p>
 <div class="arithmatex">\[
 \begin{array}{lll}
-{\mathbb E} [\![ \cdot ]\!]\  :\  E  &amp;\rightarrow&amp;\  \Sigma \rightarrow (Int \cup Bool) \\
-{\mathbb E}[\![ X ]\!] &amp; = &amp; \lambda\sigma.\sigma(X) \\
-{\mathbb E}[\![ c ]\!] &amp; = &amp; \lambda\sigma. c \\
-{\mathbb E}[\![ E_1\ OP\ E_2 ]\!] &amp; = &amp;\lambda\sigma.  {\mathbb E}[\![ E_1]\!]\sigma\ [\![ OP ]\!]\  {\mathbb E}[\![ E_2]\!]\sigma\\\
+{\mathbb E}\llbracket \cdot \rrbracket\  :\  E  &amp;\rightarrow&amp;\  \Sigma \rightarrow (Int \cup Bool) \\
+{\mathbb E}\llbracket X \rrbracket &amp; = &amp; \lambda\sigma.\sigma(X) \\
+{\mathbb E}\llbracket c \rrbracket &amp; = &amp; \lambda\sigma. c \\
+{\mathbb E}\llbracket E_1\ OP\ E_2 \rrbracket &amp; = &amp;\lambda\sigma.  {\mathbb E}\llbracket E_1\rrbracket\sigma\ \llbracket OP \rrbracket\  {\mathbb E}\llbracket E_2\rrbracket\sigma\\\
 \end{array}
 \]</div>
 <p>The signature of the semantic function indicates that we map a SIMP expression into a function that takes a memory environment and returns a contant value.</p>
-<p>Implicitly, we assume that there exists a builtin semantic function that maps operator symbols to the (actual) semantic operators, i.e., <span class="arithmatex">\([\![ + ]\!]\)</span> gives us the sum operation among two integers.  Sometimes we omit the parenthesis for function application when there is no ambiguity, e.g. <span class="arithmatex">\({\mathbb E}[\![ E]\!]\sigma\)</span> is the short hand for
-<span class="arithmatex">\(({\mathbb E}[\![ E]\!])(\sigma)\)</span></p>
-<p>As we observe, <span class="arithmatex">\({\mathbb E}[\![ \cdot ]\!]\)</span> takes an object from the expression syntactic domain and a memory store object from the domain of <span class="arithmatex">\(\Sigma\)</span>, returns a value frmo the union of <span class="arithmatex">\(Int\)</span> and <span class="arithmatex">\(Bool\)</span> semantic domains.</p>
+<p>Implicitly, we assume that there exists a builtin semantic function that maps operator symbols to the (actual) semantic operators, i.e., <span class="arithmatex">\(\llbracket + \rrbracket\)</span> gives us the sum operation among two integers.  Sometimes we omit the parenthesis for function application when there is no ambiguity, e.g. <span class="arithmatex">\({\mathbb E}\llbracket E\rrbracket\sigma\)</span> is the short hand for
+<span class="arithmatex">\(({\mathbb E}\llbracket E\rrbracket)(\sigma)\)</span></p>
+<p>As we observe, <span class="arithmatex">\({\mathbb E}\llbracket \cdot \rrbracket\)</span> takes an object from the expression syntactic domain and a memory store object from the domain of <span class="arithmatex">\(\Sigma\)</span>, returns a value frmo the union of <span class="arithmatex">\(Int\)</span> and <span class="arithmatex">\(Bool\)</span> semantic domains.</p>
 <h3 id="denotational-semantics-for-simp-statements">Denotational Semantics for SIMP statements</h3>
 <p>To define the denotational semantics, we need some extra preparation, in order to support non-terminating programs.</p>
 <p>Let <span class="arithmatex">\(\bot\)</span> be a special element, called <em>undefined</em>, that denotes failure or divergence.
-Let <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(g\)</span> be functions, we define</p>
-<div class="arithmatex">\[
+Let <span class="arithmatex">\(f\)</span> and <span class="arithmatex">\(g\)</span> be functions, we define
+$$
 \begin{array}{rcl}
 f \circ_\bot g &amp; = &amp; \lambda \sigma. \left [ \begin{array}{cc}
-                  \bot &amp; g(\sigma) = \bot \\
+                  \bot &amp; g(\sigma) = \bot \
                   f(g(\sigma)) &amp; otherwise
                  \end{array} \right .
 \end{array}
-\]</div>
-<p>which is a function composition that propogates <span class="arithmatex">\(\bot\)</span> if present.
-Now we define the semantic function for SIMP statements.</p>
-<div class="arithmatex">\[
+$$
+which is a function composition that propogates <span class="arithmatex">\(\bot\)</span> if present.
+Now we define the semantic function for SIMP statements.
+$$
 \begin{array}{lll}
-{\mathbb S}[\![ \cdot ]\!] :   \overline{S}  &amp; \rightarrow\ &amp; \Sigma \ \rightarrow \ \Sigma \cup \{ \bot \} \\
-{\mathbb S} [\![  nop ]\!]&amp; = &amp; \lambda\sigma. \sigma \\
-{\mathbb S} [\![ return\ X ]\!]&amp; = &amp; \lambda\sigma. \sigma \\
-{\mathbb S} [\![  X = E ]\!]&amp; = &amp; \lambda\sigma. \sigma \oplus (X, {\mathbb E}[\![ E ]\!]\sigma) \\
-{\mathbb S} [\![ S \overline{S} ]\!]&amp; = &amp; {\mathbb S} [\![ \overline{S} ]\!] \circ_\bot {\mathbb S} [\![ S ]\!]\\
-{\mathbb S} [\![ if \ E\ \{\overline{S_1}\} \ else\ \{\overline{S_2} \} ]\!]&amp; = &amp; \lambda\sigma. \left [ \begin{array}{cc}
-                    {\mathbb S} [\![ \overline{S_1} ]\!]\sigma  &amp; {\mathbb E}[\![ E ]\!]\sigma = true \\
-                    {\mathbb S} [\![ \overline{S_2} ]\!]\sigma &amp; {\mathbb E}[\![ E ]\!]\sigma = false \\
-                \end{array} \right . \\
-{\mathbb S} [\![ while \ E\ \{\overline{S}\} ]\!]&amp; = &amp; fix(F) \\
+{\mathbb S}\llbracket \cdot \rrbracket :   \overline{S}  &amp; \rightarrow\ &amp; \Sigma \ \rightarrow \ \Sigma \cup { \bot } \
+{\mathbb S} \llbracket  nop \rrbracket&amp; = &amp; \lambda\sigma. \sigma \
+{\mathbb S} \llbracket return\ X \rrbracket&amp; = &amp; \lambda\sigma. \sigma \
+{\mathbb S} \llbracket  X = E \rrbracket&amp; = &amp; \lambda\sigma. \sigma \oplus (X, {\mathbb E}\llbracket E \rrbracket\sigma) \
+{\mathbb S} \llbracket S \overline{S} \rrbracket&amp; = &amp; {\mathbb S} \llbracket \overline{S} \rrbracket \circ_\bot {\mathbb S} \llbracket S \rrbracket\
+{\mathbb S} \llbracket if \ E\ {\overline{S_1}} \ else\ {\overline{S_2} } \rrbracket&amp; = &amp; \lambda\sigma. \left [ \begin{array}{cc}
+                    {\mathbb S} \llbracket \overline{S_1} \rrbracket\sigma  &amp; {\mathbb E}\llbracket E \rrbracket\sigma = true \
+                    {\mathbb S} \llbracket \overline{S_2} \rrbracket\sigma &amp; {\mathbb E}\llbracket E \rrbracket\sigma = false \
+                \end{array} \right . \
+{\mathbb S} \llbracket while \ E\ {\overline{S}} \rrbracket&amp; = &amp; fix(F) \
  {\tt where}\ &amp;  &amp; F= \lambda g.\lambda\sigma. \left [ \begin{array}{cc}
-                    (g \circ_\bot {\mathbb S} [\![ \overline{S} ]\!])(\sigma)  &amp; {\mathbb E}[\![ E ]\!]\sigma = true \\
-                    \sigma &amp; {\mathbb E}[\![ E ]\!]\sigma = false \\
-                \end{array} \right . \\
+                    (g \circ_\bot {\mathbb S} \llbracket \overline{S} \rrbracket)(\sigma)  &amp; {\mathbb E}\llbracket E \rrbracket\sigma = true \
+                    \sigma &amp; {\mathbb E}\llbracket E \rrbracket\sigma = false \
+                \end{array} \right . \
 \end{array}
-\]</div>
+$$</p>
 <p>The signature of the semantic function indicates that we map a SIMP statement into a function that takes a memory environment and returns another memory environment or divergence.</p>
 <p>In case of <span class="arithmatex">\(nop\)</span> and return statement, the semantic function returns an identiy function.
 In case of an assignment, the semantic function takes an memory environment object and update the binding of <span class="arithmatex">\(X\)</span> to the meaning of <span class="arithmatex">\(E\)</span>.
 In case of sequence statements, the semantic function returns a <span class="arithmatex">\(\bot\)</span>-function composition of the semantic function of the leading statement and the semantic function of the the trailing statements.
 In case of if-else statement, the semantic function returns the semantics of the then or the else branch statement depending on the meaning of the condition expression.
 In case of while statement, the semantic function returns a fixed point function. This is due to the fact that the underlying domain theory framework we are using does not support recursion. Hence a fixed point operator <span class="arithmatex">\(fix\)</span> is used, which is kind of like recursion, (as we learnd in lambda caluclus), and it is more expresive as it gives a fixed term notiation for a sequence of infinitely many function objects applications. To help our understanding, we give a <strong>cheating version</strong> as if recursive function is supported in the underlying domain theory framework and we are allow to refer to a function application as a name function, we would have</p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{lll}
-{\mathbb S} [\![ while \ E\ \{\overline{S}\} ]\!]&amp; = &amp; \lambda\sigma. \left \{ \begin{array}{cc}
-                    ({\mathbb S} [\![ while \ E\ \{\overline{S}\}]\!]  \circ_\bot {\mathbb S} [\![ \overline{S} ]\!])(\sigma)  &amp; {\mathbb E}[\![ E ]\!]\sigma = true \\
-                    \sigma &amp; {\mathbb E}[\![ E ]\!]\sigma = false \\
-                \end{array} \right . \\
+{\mathbb S} \llbracket while \ E\ {\overline{S}} \rrbracket&amp; = &amp; \lambda\sigma. \left { \begin{array}{cc}
+                    ({\mathbb S} \llbracket while \ E\ {\overline{S}}\rrbracket  \circ_\bot {\mathbb S} \llbracket \overline{S} \rrbracket)(\sigma)  &amp; {\mathbb E}\llbracket E \rrbracket\sigma = true \
+                    \sigma &amp; {\mathbb E}\llbracket E \rrbracket\sigma = false \
+                \end{array} \right . \
 \end{array}
-\]</div>
-<p>which means the function <span class="arithmatex">\(g\)</span> in the earlier version is a recursive reference to <span class="arithmatex">\({\mathbb S} [\![ while \ E\ \{\overline{S}\} ]\!]\)</span></p>
+$$
+which means the function <span class="arithmatex">\(g\)</span> in the earlier version is a recursive reference to <span class="arithmatex">\({\mathbb S} \llbracket while \ E\ \{\overline{S}\} \rrbracket\)</span></p>
 <p>For example, let <span class="arithmatex">\(\sigma = \{ (input, 1)\}\)</span></p>
 <div class="arithmatex">\[
 \begin{array}{ll}
-&amp; {\mathbb S} [\![ x=input; s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; ]\!] \sigma \\
-= &amp; ({\mathbb S} [\![ s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; ]\!] \circ_\bot {\mathbb S} [\![ x=input ]\!]) (\sigma) \\
-= &amp; {\mathbb S} [\![ s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; ]\!] \sigma_1 \\
-= &amp; ({\mathbb S} [\![ c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; ]\!] \circ_\bot {\mathbb S} [\![ s=0 ]\!]) (\sigma_1) \\
-= &amp; {\mathbb S} [\![ c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; ]\!] \sigma_2 \\
-= &amp; ({\mathbb S} [\![ while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; ]\!] \circ_\bot {\mathbb S} [\![ c=0 ]\!]) (\sigma_2) \\
-= &amp; {\mathbb S} [\![ while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; ]\!] \sigma_3 \\
-= &amp; ({\mathbb S} [\![ return\ s; ]\!] \circ_\bot {\mathbb S} [\![ while\ c &lt; x \{s = c + s; c = c + 1;\} ]\!]) (\sigma_3) \\
-= &amp; ({\mathbb S} [\![ return\ s; ]\!] \circ_\bot {\mathbb S} [\![ while\ c &lt; x \{s = c + s; c = c + 1;\} ]\!] \circ_\bot{\mathbb S} [\![ s = c + s; c = c + 1; ]\!]) (\sigma_3) \\
-= &amp; ({\mathbb S} [\![ return\ s; ]\!] \circ_\bot {\mathbb S} [\![ while\ c &lt; x \{s = c + s; c = c + 1;\} ]\!])(\sigma_4) \\
-= &amp; {\mathbb S} [\![ return\ s; ]\!]\sigma_4 \\
+&amp; {\mathbb S} \llbracket x=input; s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma \\
+= &amp; ({\mathbb S} \llbracket s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket x=input \rrbracket) (\sigma) \\
+= &amp; {\mathbb S} \llbracket s = 0; c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma_1 \\
+= &amp; ({\mathbb S} \llbracket c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket s=0 \rrbracket) (\sigma_1) \\
+= &amp; {\mathbb S} \llbracket c=0; while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma_2 \\
+= &amp; ({\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket c=0 \rrbracket) (\sigma_2) \\
+= &amp; {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\}return\ s; \rrbracket \sigma_3 \\
+= &amp; ({\mathbb S} \llbracket return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\} \rrbracket) (\sigma_3) \\
+= &amp; ({\mathbb S} \llbracket return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\} \rrbracket \circ_\bot{\mathbb S} \llbracket s = c + s; c = c + 1; \rrbracket) (\sigma_3) \\
+= &amp; ({\mathbb S} \llbracket return\ s; \rrbracket \circ_\bot {\mathbb S} \llbracket while\ c &lt; x \{s = c + s; c = c + 1;\} \rrbracket)(\sigma_4) \\
+= &amp; {\mathbb S} \llbracket return\ s; \rrbracket\sigma_4 \\
 = &amp; \sigma_4
 \end{array}
 \]</div>
-<p>where</p>
-<div class="arithmatex">\[
+<p>where
+$$
 \begin{array}{l}
-\sigma_1 = \sigma \oplus (x,1) = \{ (input,1), (x,1) \} \\
-\sigma_2 = \sigma_1 \oplus (s,0)  = \{ (input,1), (x,1), (s,0) \} \\
-\sigma_3 = \sigma_2 \oplus (c,0)  = \{ (input,1), (x,1), (s,0), (c,0) \}\\
-\sigma_4 = \sigma_3 \oplus (s,0) \oplus (c,1)  = \{ (input,1), (x,1), (s,0), (c,1) \}\\
+\sigma_1 = \sigma \oplus (x,1) = { (input,1), (x,1) } \
+\sigma_2 = \sigma_1 \oplus (s,0)  = { (input,1), (x,1), (s,0) } \
+\sigma_3 = \sigma_2 \oplus (c,0)  = { (input,1), (x,1), (s,0), (c,0) }\
+\sigma_4 = \sigma_3 \oplus (s,0) \oplus (c,1)  = { (input,1), (x,1), (s,0), (c,1) }\
 \end{array}
-\]</div>
+$$</p>
 <p>Let's consider another example of a non-terminating program, we can't use the <em>cheating version</em> here as it would gives the infinite sequence of function compositions.
 Let <span class="arithmatex">\(\sigma = \{(input, true)\}\)</span></p>
 <div class="arithmatex">\[
 \begin{array}{ll}
-&amp; {\mathbb S} [\![ while\ input \{nop;\}return\ input; ]\!] \sigma \\
+&amp; {\mathbb S} \llbracket while\ input \{nop;\}return\ input; \rrbracket \sigma \\
 = &amp; fix(F) \sigma \\
 = &amp; \bot
 \end{array}
@@ -938,14 +938,14 @@ Let <span class="arithmatex">\(\sigma = \{(input, true)\}\)</span></p>
 <div class="arithmatex">\[
 \begin{array}{l}
 F = \lambda g.\lambda\sigma. \left [ \begin{array}{cc}
-                    (g \circ_\bot {\mathbb S} [\![ nop ]\!])(\sigma)  &amp; {\mathbb E}[\![ input ]\!]\sigma = true \\
-                    \sigma &amp; {\mathbb E}[\![ input ]\!]\sigma = false \\
+                    (g \circ_\bot {\mathbb S} \llbracket nop \rrbracket)(\sigma)  &amp; {\mathbb E}\llbracket input \rrbracket\sigma = true \\
+                    \sigma &amp; {\mathbb E}\llbracket input \rrbracket\sigma = false \\
                 \end{array} \right . \\
 \end{array}
 \]</div>
-<p>Since <span class="arithmatex">\({\mathbb E}[\![ input ]\!]\sigma\)</span> is always <span class="arithmatex">\(true\)</span>,</p>
+<p>Since <span class="arithmatex">\({\mathbb E}\llbracket input \rrbracket\sigma\)</span> is always <span class="arithmatex">\(true\)</span>,</p>
 <div class="arithmatex">\[
-F = \lambda g.\lambda\sigma.(g \circ_\bot {\mathbb S} [\![ nop ]\!])(\sigma)  
+F = \lambda g.\lambda\sigma.(g \circ_\bot {\mathbb S} \llbracket nop \rrbracket)(\sigma)  
 \]</div>
 <p>With some math proof, we find that <span class="arithmatex">\(fix(F)\)</span> is function of type <span class="arithmatex">\(\Sigma \rightarrow \bot\)</span>. We won't be able to discuss the proof until we look into lattice theory in the upcoming classes.</p>
 <p>In simple term, using the <span class="arithmatex">\(fix\)</span> operator to define the while statement denotational semantics allows us to "collapse" the infinite sequence of function composition/application into a fixed point, which is a non-terminating function.</p>

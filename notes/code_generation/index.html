@@ -1415,15 +1415,15 @@ ireturn
 J \vdash (\Delta, S, jis) \longrightarrow (\Delta', S', jis')
 \]</div>
 <p><span class="arithmatex">\(J\)</span> is the entire program, it is required when we process jumps and conditional jump, the rule rewrites a configuration <span class="arithmatex">\((L\Delta, S, jis)\)</span> to the next configuration <span class="arithmatex">\((\Delta', S', jis')\)</span>, where <span class="arithmatex">\(\Delta\)</span> and <span class="arithmatex">\(\Delta'\)</span> are the local environments, <span class="arithmatex">\(S\)</span> and <span class="arithmatex">\(S'\)</span> are the stacks, <span class="arithmatex">\(jis\)</span> and <span class="arithmatex">\(jis'\)</span> are the currrent and next set of instructions to be processed. </p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{rc}
-(\tt sjLoad1) &amp; J \vdash (\Delta, \_, \_, iload\ n;jis) \longrightarrow (\Delta, \Delta(n), \_, jis) \\ \\ 
-(\tt sjLoad2) &amp; J \vdash (\Delta, c, \_, iload\ n;jis) \longrightarrow (\Delta, c, \Delta(n), jis) \\ \\ 
-(\tt sjPush1) &amp; J \vdash (\Delta, \_, \_, sipush\ c;jis) \longrightarrow (\Delta, c, \_, jis) \\ \\ 
-(\tt sjPush2) &amp; J \vdash (\Delta, c_0, \_, sipush\ c_2;jis) \longrightarrow (\Delta, c_0, c_1, jis)
+(\tt sjLoad1) &amp; J \vdash (\Delta, _, _, iload\ n;jis) \longrightarrow (\Delta, \Delta(n), _, jis) \ \ 
+(\tt sjLoad2) &amp; J \vdash (\Delta, c, _, iload\ n;jis) \longrightarrow (\Delta, c, \Delta(n), jis) \ \ 
+(\tt sjPush1) &amp; J \vdash (\Delta, _, _, sipush\ c;jis) \longrightarrow (\Delta, c, _, jis) \ \ 
+(\tt sjPush2) &amp; J \vdash (\Delta, c_0, _, sipush\ c_2;jis) \longrightarrow (\Delta, c_0, c_1, jis)
 \end{array}
-\]</div>
-<p>The rules <span class="arithmatex">\((\tt sjLoad1)\)</span> and  <span class="arithmatex">\((\tt sjLoad2)\)</span> handles the loading variable's content to the stack registers. 
+$$
+The rules <span class="arithmatex">\((\tt sjLoad1)\)</span> and  <span class="arithmatex">\((\tt sjLoad2)\)</span> handles the loading variable's content to the stack registers. 
 The rules <span class="arithmatex">\((\tt sjPush1)\)</span> and  <span class="arithmatex">\((\tt sjPush2)\)</span> handles the loading constant to the stack registers. </p>
 <div class="arithmatex">\[
 \begin{array}{rc}
@@ -1498,16 +1498,16 @@ Let <span class="arithmatex">\(L\)</span> be a mapping from PA labels (which are
 <li><span class="arithmatex">\(L \vdash l \Rightarrow jis\)</span>, convert a PA label into a JVM bytecode instructions, usually it is either empty or singleton.</li>
 </ul>
 <h3 id="converting-pa-labeled-instructions">Converting PA labeled instructions</h3>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{rl}
      {\tt (jMove)} &amp; \begin{array}{c}
-                    L \vdash l \Rightarrow jis_0 \ \ \ M \vdash s \Rightarrow jis_1 \ \ \ M,L\vdash lis \Rightarrow jis_2 \\
+                    L \vdash l \Rightarrow jis_0 \ \ \ M \vdash s \Rightarrow jis_1 \ \ \ M,L\vdash lis \Rightarrow jis_2 \
                     \hline
                     M, L \vdash l:t \leftarrow s; lis \Rightarrow jis_0 + jis_1 + [istore\ M(t)] + jis_2
-                \end{array} \\  
+                \end{array} \<br/>
 \end{array}
-\]</div>
-<p>The rule <span class="arithmatex">\({\tt (jMove)}\)</span> handles the case of a move instruction. In this case we make use of the auxiliary rule <span class="arithmatex">\(L \vdash l_1 \Rightarrow jis_0\)</span> to generate the label, in case the label is used as the target in some jump instructions. The auxiliary rule <span class="arithmatex">\(M \vdash s \Rightarrow jis_1\)</span> converts a PA operand into a loading instruction in JVM bytecodes. Details fo these auxiliary functions can be found in the next subsection.</p>
+$$
+The rule <span class="arithmatex">\({\tt (jMove)}\)</span> handles the case of a move instruction. In this case we make use of the auxiliary rule <span class="arithmatex">\(L \vdash l_1 \Rightarrow jis_0\)</span> to generate the label, in case the label is used as the target in some jump instructions. The auxiliary rule <span class="arithmatex">\(M \vdash s \Rightarrow jis_1\)</span> converts a PA operand into a loading instruction in JVM bytecodes. Details fo these auxiliary functions can be found in the next subsection.</p>
 <div class="arithmatex">\[
 \begin{array}{rl}
      {\tt (jEq)} &amp; \begin{array}{c}

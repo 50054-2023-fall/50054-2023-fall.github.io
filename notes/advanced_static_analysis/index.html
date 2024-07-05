@@ -634,18 +634,18 @@ return y;
 </tbody>
 </table>
 <p>To show that the above definitions of <code>gte</code> and <code>lt</code> are sound. We can consider the range notation of the abstract values. </p>
-<div class="arithmatex">\[
+<p>$$
 \begin{array}{rcl}
-\top &amp; = &amp; [-\infty, +\infty] \\ 
-+0 &amp; = &amp; [0, +\infty] \\ 
--0 &amp; = &amp; [-\infty, 0] \\ 
-\ + &amp; = &amp; [1, +\infty] \\ 
-\ - &amp; = &amp; [-\infty, -1] \\ 
-0 &amp; = &amp; [0, 0] \\ 
+\top &amp; = &amp; [-\infty, +\infty] \ 
++0 &amp; = &amp; [0, +\infty] \ 
+-0 &amp; = &amp; [-\infty, 0] \ 
+\ + &amp; = &amp; [1, +\infty] \ 
+\ - &amp; = &amp; [-\infty, -1] \ 
+0 &amp; = &amp; [0, 0] \ 
 \bot &amp; = &amp; [+\infty, -\infty] 
 \end{array}
-\]</div>
-<p><span class="arithmatex">\([l, h]\)</span> denotes the set of integers <span class="arithmatex">\(i\)</span> where <span class="arithmatex">\(l \leq i \leq h\)</span>. <span class="arithmatex">\(\bot\)</span> is an empty range.
+$$
+<span class="arithmatex">\([l, h]\)</span> denotes the set of integers <span class="arithmatex">\(i\)</span> where <span class="arithmatex">\(l \leq i \leq h\)</span>. <span class="arithmatex">\(\bot\)</span> is an empty range.
 We can think of <code>gte</code> as</p>
 <div class="arithmatex">\[
 gte([l_1, h_1], [l_2, h_2]) = [ max(l_1,l_2), min(h_1, +\infty)]
